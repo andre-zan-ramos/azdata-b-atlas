@@ -10,7 +10,7 @@ export function HomePage() {
         <div>
           <h2>Receita Federal · CNPJ</h2>
           <p>Explore empresas, matrizes e filiais. Os dados são consultados pela API AzData.</p>
-          <div className="home-actions"><Link className="button-link" to="/receita-federal/cnpj/estabelecimentos">Buscar estabelecimentos</Link><Link to="/receita-federal/cnpj/empresas">Buscar empresas</Link></div>
+          <div className="home-actions"><Link className="button-link" to="/receita-federal/cnpj">Explorar empresas</Link></div>
         </div>
       </div>
     </section>

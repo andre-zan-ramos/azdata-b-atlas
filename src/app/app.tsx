@@ -1,9 +1,8 @@
-import { Link, NavLink, Outlet, Route, Routes } from 'react-router'
+import { Link, Navigate, NavLink, Outlet, Route, Routes } from 'react-router'
 import { HomePage } from '../pages/home-page'
 import { NotFoundPage } from '../pages/not-found-page'
 import { EstablishmentsPage } from '../pages/establishments-page'
 import { EstablishmentDetailPage } from '../pages/establishment-detail-page'
-import { CompaniesPage } from '../pages/companies-page'
 import { CompanyDetailPage } from '../pages/company-detail-page'
 
 function AppShell() {
@@ -17,8 +16,7 @@ function AppShell() {
         </Link>
         <nav aria-label="Navegação principal">
           <NavLink to="/" end>Início</NavLink>
-          <NavLink to="/receita-federal/cnpj/estabelecimentos">Estabelecimentos</NavLink>
-          <NavLink to="/receita-federal/cnpj/empresas">Empresas</NavLink>
+          <NavLink to="/receita-federal/cnpj">Empresas</NavLink>
           <span className="soon">CNO <small>Em breve</small></span>
         </nav>
       </header>
@@ -33,9 +31,10 @@ export function App() {
     <Routes>
       <Route element={<AppShell />}>
         <Route index element={<HomePage />} />
-        <Route path="receita-federal/cnpj/estabelecimentos" element={<EstablishmentsPage />} />
+        <Route path="receita-federal/cnpj" element={<EstablishmentsPage />} />
+        <Route path="receita-federal/cnpj/estabelecimentos" element={<Navigate to="/receita-federal/cnpj" replace />} />
         <Route path="receita-federal/cnpj/estabelecimentos/:cnpj" element={<EstablishmentDetailPage />} />
-        <Route path="receita-federal/cnpj/empresas" element={<CompaniesPage />} />
+        <Route path="receita-federal/cnpj/empresas" element={<Navigate to="/receita-federal/cnpj" replace />} />
         <Route path="receita-federal/cnpj/empresas/:cnpjBasico" element={<CompanyDetailPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>
