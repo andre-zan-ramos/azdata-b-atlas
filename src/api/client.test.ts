@@ -7,16 +7,16 @@ const success: AxiosAdapter = async (config) => ({ data: { ok: true }, status: 2
 
 describe('infraestrutura de API', () => {
   it('aplica URL base e encaminha o signal ao transporte', async () => {
-    const client = createApiClient('https://api.example.test/v1')
+    const client = createApiClient('https://api.example.test')
     const controller = new AbortController()
     const adapter = vi.fn(success)
     await client.get('example', { adapter, signal: controller.signal })
-    expect(adapter.mock.calls[0][0]).toMatchObject({ baseURL: 'https://api.example.test/v1/', signal: controller.signal })
+    expect(adapter.mock.calls[0][0]).toMatchObject({ baseURL: 'https://api.example.test/', signal: controller.signal })
   })
 
   it.each([undefined, 'invalid', 'ftp://api.example.test'])('bloqueia configuração inválida antes do transporte: %s', async (url) => {
     const adapter = vi.fn(success)
-    await expect(createApiClient(url).get('example', { adapter })).rejects.toThrow(/VITE_API_BASE_URL/)
+    await expect(createApiClient(url).get('example', { adapter })).rejects.toThrow(/VITE_AZDATA_API_BASE_URL/)
     expect(adapter).not.toHaveBeenCalled()
   })
 

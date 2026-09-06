@@ -1,3 +1,4 @@
+import { Link } from 'react-router'
 export function HomePage() {
   return (
     <section className="welcome" aria-labelledby="welcome-title">
@@ -7,8 +8,9 @@ export function HomePage() {
       <div className="welcome-note">
         <span className="note-marker" aria-hidden="true" />
         <div>
-          <h2>Estamos começando.</h2>
-          <p>As primeiras ferramentas de exploração estão em preparação.</p>
+          <h2>Receita Federal · CNPJ</h2>
+          <p>Explore empresas, matrizes e filiais. Os dados são consultados pela API AzData.</p>
+          <div className="home-actions"><Link className="button-link" to="/receita-federal/cnpj/estabelecimentos">Buscar estabelecimentos</Link><Link to="/receita-federal/cnpj/empresas">Buscar empresas</Link></div>
         </div>
       </div>
     </section>

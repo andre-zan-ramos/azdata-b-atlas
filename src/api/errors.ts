@@ -1,7 +1,7 @@
 import axios from 'axios'
 
 export class ApiError extends Error {
-  constructor(message: string, public readonly status?: number, public readonly code?: string) {
+  constructor(message: string, public readonly status?: number, public readonly code?: string, public readonly fields?: Record<string, string[]>) {
     super(message)
     this.name = 'ApiError'
   }
@@ -24,7 +24,12 @@ export function normalizeApiError(error: unknown): Error {
       (value): value is string => typeof value === 'string' && value.trim().length > 0,
     )
     const code = typeof body.codigo === 'string' ? body.codigo : undefined
-    if (detail) return new ApiError(detail, status, code)
+    const fields = Object.fromEntries(Object.entries(body).flatMap(([key, value]) => {
+      if (['detalhe', 'detail', 'message', 'codigo'].includes(key)) return []
+      const messages = Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : typeof value === 'string' ? [value] : []
+      return messages.length ? [[key, messages]] : []
+    }))
+    if (detail || Object.keys(fields).length) return new ApiError(detail ?? 'Revise os campos informados.', status, code, fields)
   }
   const message = status === undefined
     ? 'Não foi possível acessar a API. Verifique sua conexão.'

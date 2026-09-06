@@ -2,17 +2,18 @@ import axios from 'axios'
 import { normalizeApiError } from './errors'
 
 function apiBaseUrl(value: string | undefined) {
-  if (!value?.trim()) throw new Error('Configure VITE_API_BASE_URL para consultar a API.')
+  if (!value?.trim()) throw new Error('Configure VITE_AZDATA_API_BASE_URL para consultar a API.')
   let url: URL
   try {
     url = new URL(value.trim())
   } catch {
-    throw new Error('VITE_API_BASE_URL deve ser uma URL HTTP ou HTTPS válida.')
+    throw new Error('VITE_AZDATA_API_BASE_URL deve ser uma URL HTTP ou HTTPS válida.')
   }
   if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.search || url.hash) {
-    throw new Error('VITE_API_BASE_URL deve conter apenas a origem e o caminho de uma API HTTP ou HTTPS.')
+    throw new Error('VITE_AZDATA_API_BASE_URL deve conter somente uma origem HTTP ou HTTPS, sem caminho.')
   }
-  return url.toString().replace(/\/?$/, '/')
+  if (url.pathname !== '/') throw new Error('VITE_AZDATA_API_BASE_URL deve conter somente uma origem HTTP ou HTTPS, sem caminho.')
+  return url.origin + '/'
 }
 
 export function createApiClient(baseUrl: string | undefined) {
@@ -29,4 +30,4 @@ export function createApiClient(baseUrl: string | undefined) {
   return client
 }
 
-export const apiClient = createApiClient(import.meta.env.VITE_API_BASE_URL)
+export const apiClient = createApiClient(import.meta.env.VITE_AZDATA_API_BASE_URL)
