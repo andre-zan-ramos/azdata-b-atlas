@@ -26,7 +26,12 @@ export function LocationFacetFilter({ q, filters, selected, onSelect }: { q: str
     document.addEventListener('pointerdown', closeOutside)
     return () => document.removeEventListener('pointerdown', closeOutside)
   }, [open])
-  const items = query.data?.pages.flatMap(page => page.results) ?? []
+  const items = [...(query.data?.pages.flatMap(page => page.results) ?? [])].sort((left, right) => {
+    if (!left.municipio) return right.municipio ? 1 : left.uf.localeCompare(right.uf, 'pt-BR')
+    if (!right.municipio) return -1
+    return left.municipio.descricao.localeCompare(right.municipio.descricao, 'pt-BR', { sensitivity: 'base' })
+      || left.uf.localeCompare(right.uf, 'pt-BR')
+  })
   const submit = (event: FormEvent) => { event.preventDefault(); setAppliedDescription(description.trim()) }
   const choose = (item: LocationFacetItem) => {
     if (!item.municipio) return
