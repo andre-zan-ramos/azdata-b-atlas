@@ -1,2 +1,2 @@
-import type { Paginated } from './types'
-export function adaptPage<T>(data: Paginated<T>, requestedPage: number, requestedSize: number) { return { results: data.results, count: data.count, page: 'page' in data ? data.page : requestedPage, pageSize: 'page_size' in data ? data.page_size : requestedSize, hasNext: 'has_next' in data ? data.has_next : Boolean(data.next), hasPrevious: 'has_previous' in data ? data.has_previous : Boolean(data.previous) } }
+import type { FastPage, Paginated } from './types'
+export function adaptPage<T>(data: Paginated<T> | FastPage<T>, requestedPage: number, requestedSize: number) { return { results: data.results, count: data.count, page: 'page' in data ? data.page : requestedPage, pageSize: 'page_size' in data ? data.page_size : requestedSize, hasNext: 'has_next' in data ? data.has_next : Boolean(data.next), hasPrevious: 'has_previous' in data ? data.has_previous : Boolean(data.previous) } }
