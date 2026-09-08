@@ -4,6 +4,7 @@ import { NotFoundPage } from '../pages/not-found-page'
 import { EstablishmentsPage } from '../pages/establishments-page'
 import { EstablishmentDetailPage } from '../pages/establishment-detail-page'
 import { CompanyDetailPage } from '../pages/company-detail-page'
+import { PartnersPage } from '../pages/partners-page'
 
 function AppShell() {
   return (
@@ -16,7 +17,8 @@ function AppShell() {
         </Link>
         <nav aria-label="Navegação principal">
           <NavLink to="/" end>Início</NavLink>
-          <NavLink to="/receita-federal/cnpj">Empresas</NavLink>
+          <NavLink to="/receita-federal/cnpj" end>Empresas</NavLink>
+          <NavLink to="/receita-federal/cnpj/socios">Sócios</NavLink>
           <span className="soon">CNO <small>Em breve</small></span>
         </nav>
       </header>
@@ -36,6 +38,7 @@ export function App() {
         <Route path="receita-federal/cnpj/estabelecimentos/:cnpj" element={<EstablishmentDetailPage />} />
         <Route path="receita-federal/cnpj/empresas" element={<Navigate to="/receita-federal/cnpj" replace />} />
         <Route path="receita-federal/cnpj/empresas/:cnpjBasico" element={<CompanyDetailPage />} />
+        <Route path="receita-federal/cnpj/socios" element={<PartnersPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>
     </Routes>

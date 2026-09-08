@@ -1,6 +1,6 @@
 import type { AxiosInstance } from 'axios'
 import { apiClient } from '../../client'
-import type { BusinessSearchFilters, BusinessSearchItem, CodeDescription, Company, CompanyDetail, CompanyFilters, CountedPage, EstablishmentDetail, EstablishmentFilters, EstablishmentListItem, FastPage, LocationFacetFilters, LocationFacetItem, Municipality, PageSize, Paginated } from './types'
+import type { BusinessSearchFilters, BusinessSearchItem, CodeDescription, Company, CompanyDetail, CompanyFilters, CountedPage, EstablishmentDetail, EstablishmentFilters, EstablishmentListItem, FastPage, LocationFacetFilters, LocationFacetItem, Municipality, PageSize, Paginated, PartnerFilters, PartnerSearchItem } from './types'
 const PREFIX = 'api/v1/receita-federal/cnpj/'
 type Params = Record<string, string | number | boolean | undefined>
 export function serializeParams(params: Params) { const query = new URLSearchParams(); Object.entries(params).forEach(([key, value]) => { if (value !== undefined && value !== '') query.set(key, String(value)) }); return query }
@@ -13,6 +13,7 @@ export function createCnpjApi(client: AxiosInstance = apiClient) {
     establishment: (cnpj: string, signal?: AbortSignal) => get<EstablishmentDetail>(`estabelecimentos/${cnpj}/`, undefined, signal),
     companies: (params: CompanyFilters, signal?: AbortSignal) => get<Paginated<Company>>('empresas/', params, signal),
     company: (root: string, signal?: AbortSignal) => get<CompanyDetail>(`empresas/${root}/`, undefined, signal),
+    partners: (params: PartnerFilters, signal?: AbortSignal) => get<FastPage<PartnerSearchItem>>('socios/', params, signal),
     cnaes: (params: { descricao?: string; descricao_modo?: string; page?: number; page_size?: PageSize }, signal?: AbortSignal) => get<Paginated<CodeDescription>>('dominios/cnaes/', params, signal),
     municipalities: (params: { uf?: string; page?: number; page_size?: PageSize }, signal?: AbortSignal) => get<Paginated<Municipality>>('dominios/municipios/', params, signal),
     registrationStatuses: (params: { page?: number; page_size?: PageSize }, signal?: AbortSignal) => get<CountedPage<CodeDescription>>('dominios/situacoes-cadastrais/', params, signal),

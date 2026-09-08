@@ -23,9 +23,9 @@ describe('contrato CNPJ', () => {
   it('usa os endpoints unificados, a faceta e os domínios oficiais', async () => {
     const adapter = vi.fn<AxiosAdapter>(async config => ({ data: { count:0,next:null,previous:null,results:[] }, status:200, statusText:'OK', headers:{}, config }))
     const api = createCnpjApi(axios.create({ adapter }))
-    await api.search({q:'cedov'}); await api.locationFacets({q:'cedov'}); await api.registrationStatuses({}); await api.headquartersBranches({}); await api.companySizes({}); await api.legalNatures({descricao:'sociedade'})
+    await api.search({q:'cedov'}); await api.partners({q:'maria'}); await api.locationFacets({q:'cedov'}); await api.registrationStatuses({}); await api.headquartersBranches({}); await api.companySizes({}); await api.legalNatures({descricao:'sociedade'})
     expect(adapter.mock.calls.map(call => call[0].url)).toEqual([
-      'api/v1/receita-federal/cnpj/busca/', 'api/v1/receita-federal/cnpj/busca/facetas/localidades/',
+      'api/v1/receita-federal/cnpj/busca/', 'api/v1/receita-federal/cnpj/socios/', 'api/v1/receita-federal/cnpj/busca/facetas/localidades/',
       'api/v1/receita-federal/cnpj/dominios/situacoes-cadastrais/', 'api/v1/receita-federal/cnpj/dominios/matriz-filial/',
       'api/v1/receita-federal/cnpj/dominios/portes/', 'api/v1/receita-federal/cnpj/dominios/naturezas-juridicas/',
     ])
