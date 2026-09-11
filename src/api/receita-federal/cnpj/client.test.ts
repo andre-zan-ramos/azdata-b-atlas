@@ -1,7 +1,7 @@
 import axios, { type AxiosAdapter } from 'axios'
 import { describe, expect, it, vi } from 'vitest'
 import { createCnpjApi, serializeParams } from './client'
-import { adaptPage } from './pagination'
+import { adaptPage, pageFromSearch } from './pagination'
 
 describe('contrato CNPJ', () => {
   it('serializa somente parâmetros definidos e preserva zeros à esquerda', () => {
@@ -30,8 +30,20 @@ describe('contrato CNPJ', () => {
       'api/v1/receita-federal/cnpj/dominios/portes/', 'api/v1/receita-federal/cnpj/dominios/naturezas-juridicas/',
     ])
   })
+  it('envia somente os parâmetros definidos e propaga o AbortSignal em socios', async () => {
+    const adapter = vi.fn<AxiosAdapter>(async config => ({ data: { results: [] }, status: 200, statusText: 'OK', headers: {}, config }))
+    const api = createCnpjApi(axios.create({ adapter }))
+    const controller = new AbortController()
+    await api.partners({ q: 'maria', page: 2, page_size: 25, include_total: undefined }, controller.signal)
+    expect(adapter).toHaveBeenCalledOnce()
+    expect(adapter.mock.calls[0][0].signal).toBe(controller.signal)
+    expect(String(adapter.mock.calls[0][0].params)).toBe('q=maria&page=2&page_size=25')
+  })
   it('adapta paginação com e sem contagem', () => {
     expect(adaptPage({ count:null,next:'x',previous:null,page:2,page_size:10,has_next:true,has_previous:true,results:[] },2,10)).toMatchObject({count:null,page:2,hasNext:true})
     expect(adaptPage({ count:31,next:'x',previous:'x',results:[] },2,25)).toMatchObject({count:31,page:2,pageSize:25,hasPrevious:true})
+    expect(pageFromSearch('3')).toBe(3)
+    expect(pageFromSearch('-1')).toBe(1)
+    expect(pageFromSearch('inválida')).toBe(1)
   })
 })

@@ -1,9 +1,9 @@
 import { useQuery } from '@tanstack/react-query'
-import { FormEvent } from 'react'
+import { FormEvent, useEffect, useState } from 'react'
 import { Link, useLocation, useSearchParams } from 'react-router'
 import { ApiError } from '../api/errors'
 import { cnpjApi } from '../api/receita-federal/cnpj/client'
-import { adaptPage } from '../api/receita-federal/cnpj/pagination'
+import { adaptPage, pageFromSearch } from '../api/receita-federal/cnpj/pagination'
 import type { BusinessSearchFilters, PageSize } from '../api/receita-federal/cnpj/types'
 import { LocationFacetFilter } from '../components/location-facet-filter'
 import { Pagination } from '../components/pagination'
@@ -17,7 +17,9 @@ export function EstablishmentsPage() {
   const [search, setSearch] = useSearchParams()
   const location = useLocation()
   const term = search.get('q')?.trim() ?? ''
-  const page = Number(search.get('page') || 1)
+  const [inputValue, setInputValue] = useState(term)
+  useEffect(() => setInputValue(term), [term])
+  const page = pageFromSearch(search.get('page'))
   const filters = Object.fromEntries(FILTER_KEYS.flatMap(key => { const value = search.get(key); return value ? [[key, value]] : [] })) as Pick<BusinessSearchFilters, typeof FILTER_KEYS[number]>
   const params: BusinessSearchFilters = { q: term, ...filters, page, page_size: PAGE_SIZE }
   const query = useQuery({ queryKey: ['cnpj', 'search', params], enabled: Boolean(term), queryFn: ({ signal }) => cnpjApi.search(params, signal) })
@@ -26,7 +28,7 @@ export function EstablishmentsPage() {
 
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    const value = String(new FormData(event.currentTarget).get('q') ?? '').trim()
+    const value = inputValue.trim()
     const next = new URLSearchParams(search)
     next.delete('tipo')
     next.set('page', '1')
@@ -45,7 +47,7 @@ export function EstablishmentsPage() {
   return <section className="search-page">
     <form className={`unified-search${term ? ' compact' : ''}`} onSubmit={submit} role="search">
       <label htmlFor="business-search">Encontre uma empresa</label>
-      <div className="search-row"><input id="business-search" name="q" defaultValue={term} autoFocus aria-invalid={Boolean(qError)} aria-describedby={qError ? 'business-search-error' : 'business-search-help'} placeholder="Digite razão social, nome fantasia ou CNPJ" /><button>Buscar</button></div>
+      <div className="search-row"><input id="business-search" name="q" value={inputValue} onChange={event => setInputValue(event.target.value)} autoFocus aria-invalid={Boolean(qError)} aria-describedby={qError ? 'business-search-error' : 'business-search-help'} placeholder="Digite razão social, nome fantasia ou CNPJ" /><button>Buscar</button></div>
       {qError ? <p className="field-error" id="business-search-error">{qError}</p> : <p id="business-search-help">Você pode informar um nome ou um CNPJ com 8 ou 14 dígitos.</p>}
     </form>
     {query.isPending && term && <div className="inline-message" role="status">Buscando…</div>}

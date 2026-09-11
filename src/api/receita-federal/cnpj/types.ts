@@ -1,5 +1,5 @@
 export type CodeDescription = { codigo: string; descricao: string }
-export type Municipality = { codigo: number; descricao: string; uf: string }
+export type Municipality = { codigo: string; descricao: string; uf: string }
 export type PageSize = 10 | 25 | 50
 export type Page<T> = { count: null; next: string | null; previous: string | null; page: number; page_size: PageSize; has_next: boolean; has_previous: boolean; results: T[] }
 export type FastPage<T> = Omit<Page<T>, 'count'> & { count: number | null }
