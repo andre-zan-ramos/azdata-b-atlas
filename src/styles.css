@@ -73,6 +73,13 @@ button { padding: 9px 14px; border: 0; border-radius: 5px; background: var(--bra
 .row-link { position: absolute; inset: 0; z-index: 1; border-radius: 0; }
 .partner-name-link { color: inherit; font-weight: inherit; text-decoration-color: #8aaba1; text-decoration-thickness: 1px; }.partner-name-link:hover { color: #176f5e; text-decoration-color: currentColor; }.table-partner-link { position: relative; z-index: 2; font-weight: 650; }
 .clickable-row td .meta { display: block; margin-top: 3px; }
+.partner-groups { display: grid; gap: 14px; margin-top: 10px; }
+.partner-group { overflow: hidden; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
+.partner-group-heading { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 16px; border-bottom: 1px solid var(--line); }
+.partner-group-heading h2 { margin: 0 0 4px; font-size: 17px; }
+.partner-group-heading > strong { color: var(--brand); font-size: 12px; white-space: nowrap; }
+.partner-participations { overflow-x: auto; }
+.partner-participations td:first-child { min-width: 240px; }
 .column-filter-heading { display: inline-flex; align-items: center; gap: 5px; }
 .facet-control { position: relative; display: inline-block; font-size: 13px; font-weight: 400; letter-spacing: 0; text-transform: none; }
 .facet-trigger { position: relative; display: grid; width: 25px; height: 25px; min-width: 0; padding: 0; place-items: center; border: 1px solid transparent; border-radius: 5px; background: transparent; color: #526b62; cursor: pointer; }

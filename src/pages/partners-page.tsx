@@ -7,7 +7,6 @@ import { adaptPage, pageFromSearch } from '../api/receita-federal/cnpj/paginatio
 import type { PageSize } from '../api/receita-federal/cnpj/types'
 import { Pagination } from '../components/pagination'
 import { Empty, QueryError } from '../components/query-state'
-import { partnerSearchPath } from '../utils/partners'
 
 const PAGE_SIZE: PageSize = 10
 const DATE_FORMATTER = new Intl.DateTimeFormat('pt-BR', { timeZone: 'UTC' })
@@ -39,18 +38,26 @@ export function PartnersPage() {
     <form className={`unified-search${term ? ' compact' : ''}`} onSubmit={submit} role="search">
       <label htmlFor="partner-search">Encontre um sócio</label>
       <div className="search-row"><input id="partner-search" name="q" value={inputValue} onChange={event => setInputValue(event.target.value)} autoFocus aria-invalid={Boolean(qError)} aria-describedby={qError ? 'partner-search-error' : 'partner-search-help'} placeholder="Digite o nome da pessoa ou empresa sócia" /><button>Buscar</button></div>
-      {qError ? <p className="field-error" id="partner-search-error">{qError}</p> : <p id="partner-search-help">A busca encontra participações societárias pelo nome informado. Documentos podem estar mascarados na fonte.</p>}
+      {qError ? <p className="field-error" id="partner-search-error">{qError}</p> : <p id="partner-search-help">A busca agrupa participações pelo nome e documento mascarado informados pela fonte. O agrupamento não comprova uma identidade civil única.</p>}
     </form>
     {query.isPending && searchable ? <div className="inline-message" role="status">Buscando…</div> : null}
     {query.isError && !qError ? <QueryError error={query.error} retry={() => query.refetch()} /> : null}
     {view?.results.length === 0 ? <Empty /> : null}
     {view && view.results.length > 0 ? <>
-      <div className="results-heading"><h1>Participações societárias</h1></div>
-      <div className="table-wrap"><table><thead><tr><th>Sócio</th><th>Empresa</th><th>CNPJ básico</th><th>Qualificação</th><th>Entrada</th></tr></thead><tbody>{view.results.map(item => {
+      <div className="results-heading"><h1>Sócios encontrados</h1></div>
+      <div className="partner-groups">{view.results.map((group, groupIndex) => {
         const returnTo = `${location.pathname}${location.search}`
-        const target = `/receita-federal/cnpj/empresas/${item.empresa.cnpj_basico}?return_to=${encodeURIComponent(returnTo)}`
-        return <tr className="clickable-row" key={item.id}><td><Link className="row-link" to={target} aria-label={`Ver empresa ${item.empresa.razao_social}`} /><Link className="partner-name-link table-partner-link" to={partnerSearchPath(item)}>{item.nome_socio_ou_razao_social}</Link><small className="meta">Documento: {item.cnpj_cpf_socio || 'não informado'}</small></td><td>{item.empresa.razao_social}</td><td>{item.empresa.cnpj_basico}</td><td>{item.qualificacao_socio?.descricao || '—'}</td><td>{item.data_entrada_sociedade ? DATE_FORMATTER.format(new Date(`${item.data_entrada_sociedade}T00:00:00Z`)) : '—'}</td></tr>
-      })}</tbody></table></div>
+        return <article className="partner-group" key={`${group.nome_socio_ou_razao_social}-${group.cnpj_cpf_socio ?? 'sem-documento'}-${groupIndex}`}>
+          <header className="partner-group-heading">
+            <div><h2>{group.nome_socio_ou_razao_social}</h2><span className="meta">{group.cnpj_cpf_socio || 'Documento não informado'}</span></div>
+            <strong>{group.participacoes_count} {group.participacoes_count === 1 ? 'participação' : 'participações'}</strong>
+          </header>
+          <div className="partner-participations"><table><thead><tr><th>Empresa</th><th>CNPJ básico</th><th>Qualificação</th><th>Entrada</th></tr></thead><tbody>{group.participacoes.map(participation => {
+            const target = `/receita-federal/cnpj/empresas/${participation.empresa.cnpj_basico}?return_to=${encodeURIComponent(returnTo)}`
+            return <tr className="clickable-row" key={participation.id}><td><Link className="row-link" to={target} aria-label={`Ver empresa ${participation.empresa.razao_social}`} /><strong>{participation.empresa.razao_social || 'Razão social não informada'}</strong></td><td>{participation.empresa.cnpj_basico}</td><td>{participation.qualificacao_socio?.descricao || 'Qualificação não informada'}</td><td>{participation.data_entrada_sociedade ? DATE_FORMATTER.format(new Date(`${participation.data_entrada_sociedade}T00:00:00Z`)) : 'Data não informada'}</td></tr>
+          })}</tbody></table></div>
+        </article>
+      })}</div>
       <Pagination page={view.page} pageSize={view.pageSize} count={view.count} previous={view.hasPrevious} next={view.hasNext} onPage={changePage} />
     </> : null}
   </section>

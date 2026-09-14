@@ -37,7 +37,7 @@ describe('contrato CNPJ', () => {
     await api.partners({ q: 'maria', page: 2, page_size: 25, include_total: undefined }, controller.signal)
     expect(adapter).toHaveBeenCalledOnce()
     expect(adapter.mock.calls[0][0].signal).toBe(controller.signal)
-    expect(String(adapter.mock.calls[0][0].params)).toBe('q=maria&page=2&page_size=25')
+    expect(String(adapter.mock.calls[0][0].params)).toBe('q=maria&page=2&page_size=25&agrupar=true')
   })
   it('adapta paginação com e sem contagem', () => {
     expect(adaptPage({ count:null,next:'x',previous:null,page:2,page_size:10,has_next:true,has_previous:true,results:[] },2,10)).toMatchObject({count:null,page:2,hasNext:true})
