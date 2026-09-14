@@ -8,6 +8,13 @@ import { partnerSearchPath } from '../utils/partners'
 
 const Field = ({ label, value }: { label: string; value: unknown }) => <><dt>{label}</dt><dd>{display(value)}</dd></>
 
+function establishmentType(value: number | string) {
+  const normalized = String(value).trim().toLowerCase()
+  if (normalized === '1' || normalized === 'matriz') return 'Matriz'
+  if (normalized === '2' || normalized === 'filial') return 'Filial'
+  return display(value)
+}
+
 export function EstablishmentDetailPage() {
   const { cnpj = '' } = useParams()
   const [search] = useSearchParams()
@@ -21,13 +28,15 @@ export function EstablishmentDetailPage() {
   const companyPath = `/receita-federal/cnpj/empresas/${establishment.empresa.cnpj_basico}`
   const companyReturn = internalReturnTo(search.get('return_to'), companyPath)
   const address = [establishment.tipo_logradouro, establishment.logradouro, establishment.numero, establishment.complemento, establishment.bairro].filter(Boolean).join(', ')
+  const type = establishmentType(establishment.identificador_matriz_filial)
   return <section>
-    <Link className="back-link" to={companyReturn}>← Voltar à empresa</Link>
-    <p className="eyebrow">ESTABELECIMENTO · {formatCnpj(establishment.cnpj)}</p>
-    <h1>{establishment.nome_fantasia || establishment.empresa.razao_social}</h1>
-    <p className="page-intro">Empresa: <Link to={companyReturn}>{establishment.empresa.razao_social}</Link></p>
+    <header className="establishment-heading">
+      <Link className="back-link" to={companyReturn}>← {establishment.empresa.razao_social}</Link>
+      <h1>{establishment.nome_fantasia || establishment.empresa.razao_social}</h1>
+      <p className="establishment-meta">Estabelecimento · {type} · CNPJ {formatCnpj(establishment.cnpj)}</p>
+    </header>
     <div className="detail-grid">
-      <article className="detail-card"><h2>Identificação</h2><dl><Field label="CNPJ" value={formatCnpj(establishment.cnpj)} /><Field label="Matriz/filial" value={establishment.identificador_matriz_filial} /><Field label="Início da atividade" value={formatDate(establishment.data_inicio_atividade)} /></dl></article>
+      <article className="detail-card"><h2>Identificação</h2><dl><Field label="CNPJ" value={formatCnpj(establishment.cnpj)} /><Field label="Matriz/filial" value={type} /><Field label="Início da atividade" value={formatDate(establishment.data_inicio_atividade)} /></dl></article>
       <article className="detail-card"><h2>Situação cadastral</h2><dl><Field label="Situação" value={establishment.situacao_cadastral} /><Field label="Data" value={formatDate(establishment.data_situacao_cadastral)} /><Field label="Motivo" value={establishment.motivo_situacao_cadastral?.descricao} /><Field label="Situação especial" value={establishment.situacao_especial} /></dl></article>
       <article className="detail-card"><h2>Dados empresariais</h2><dl><Field label="Razão social" value={establishment.empresa.razao_social} /><Field label="Natureza jurídica" value={establishment.empresa.natureza_juridica?.descricao} /><Field label="Capital social" value={formatMoney(establishment.empresa.capital_social)} /><Field label="Porte" value={establishment.empresa.porte_empresa?.descricao} /></dl></article>
       <article className="detail-card"><h2>Endereço</h2><dl><Field label="Logradouro" value={address} /><Field label="CEP" value={establishment.cep} /><Field label="Município/UF" value={establishment.municipio ? `${establishment.municipio.descricao}/${establishment.uf}` : establishment.uf} /><Field label="País" value={establishment.pais?.descricao} /></dl></article>
