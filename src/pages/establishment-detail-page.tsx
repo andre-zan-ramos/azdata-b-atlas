@@ -1,10 +1,10 @@
 import { useQuery } from '@tanstack/react-query'
-import { Link, useParams, useSearchParams } from 'react-router'
+import { Link, useLocation, useParams, useSearchParams } from 'react-router'
 import { cnpjApi } from '../api/receita-federal/cnpj/client'
 import { QueryError } from '../components/query-state'
+import { PartnerLink } from '../components/partner-link'
 import { codedChoice, display, formatCnpj, formatDate, formatMoney } from '../utils/format'
 import { internalReturnTo } from '../utils/navigation'
-import { partnerSearchPath } from '../utils/partners'
 
 const Field = ({ label, value }: { label: string; value: unknown }) => <><dt>{label}</dt><dd>{display(value)}</dd></>
 
@@ -18,6 +18,7 @@ function establishmentType(value: number | string) {
 export function EstablishmentDetailPage() {
   const { cnpj = '' } = useParams()
   const [search] = useSearchParams()
+  const location = useLocation()
   const valid = /^\d{14}$/.test(cnpj)
   const query = useQuery({ queryKey: ['cnpj', 'establishment', cnpj], queryFn: ({ signal }) => cnpjApi.establishment(cnpj, signal), enabled: valid })
   if (!valid) return <div className="state error"><h1>CNPJ inválido</h1><p>Informe exatamente 14 dígitos, sem máscara.</p></div>
@@ -27,6 +28,7 @@ export function EstablishmentDetailPage() {
   const establishment = query.data
   const companyPath = `/receita-federal/cnpj/empresas/${establishment.empresa.cnpj_basico}`
   const companyReturn = internalReturnTo(search.get('return_to'), companyPath)
+  const establishmentReturn = `${location.pathname}${location.search}`
   const address = [establishment.tipo_logradouro, establishment.logradouro, establishment.numero, establishment.complemento, establishment.bairro].filter(Boolean).join(', ')
   const type = establishmentType(establishment.identificador_matriz_filial)
   return <section>
@@ -47,6 +49,6 @@ export function EstablishmentDetailPage() {
     <div className="detail-card"><p><strong>Principal:</strong> {establishment.cnae_fiscal_principal ? `${establishment.cnae_fiscal_principal.codigo} · ${establishment.cnae_fiscal_principal.descricao}` : 'Não informado'}</p>{establishment.cnaes_secundarios.length > 0 && <ul>{establishment.cnaes_secundarios.map(cnae => <li key={`${cnae.codigo}-${cnae.ordem}`}>{cnae.codigo} · {cnae.descricao}</li>)}</ul>}</div>
     <h2 className="section-title">Sócios da empresa</h2>
     <p className="hint">Este quadro pertence à empresa {establishment.empresa.razao_social}, não exclusivamente a este estabelecimento.</p>
-    {establishment.socios.length ? <div className="cards">{establishment.socios.map((partner, index) => <article className="result-card" key={`${partner.identificador_socio}-${index}`}><div><h3><Link className="partner-name-link" to={partnerSearchPath(partner)}>{partner.nome_socio_ou_razao_social}</Link></h3><span className="meta">{partner.cnpj_cpf_socio || 'Documento não informado'} · {partner.qualificacao_socio?.descricao || 'Qualificação não informada'}</span></div></article>)}</div> : <p>Não há sócios informados.</p>}
+    {establishment.socios.length ? <div className="cards">{establishment.socios.map((partner, index) => <article className="result-card" key={`${partner.identificador_socio}-${index}`}><div><h3><PartnerLink partner={partner} returnTo={establishmentReturn} /></h3><span className="meta">{partner.cnpj_cpf_socio || 'Documento não informado'} · {partner.qualificacao_socio?.descricao || 'Qualificação não informada'}</span></div></article>)}</div> : <p>Não há sócios informados.</p>}
   </section>
 }
