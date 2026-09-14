@@ -18,7 +18,7 @@ const maria: GroupedPartnerSearchItem = {
   participacoes_count: 2,
   participacoes: [
     { id: 7, identificador_socio: 2, qualificacao_socio: { codigo: '49', descricao: 'Sócio-Administrador' }, data_entrada_sociedade: '2020-01-02', representante_legal_cpf: null, representante_legal_nome: null, faixa_etaria: 5, empresa: { cnpj_basico: '00999999', razao_social: 'ZETA EMPRESA SA', natureza_juridica: null, porte_empresa: null } },
-    { id: 8, identificador_socio: 2, qualificacao_socio: null, data_entrada_sociedade: null, representante_legal_cpf: null, representante_legal_nome: null, faixa_etaria: null, empresa: { cnpj_basico: '00123456', razao_social: 'ALFA LTDA', natureza_juridica: null, porte_empresa: null } },
+    { id: 8, identificador_socio: 2, qualificacao_socio: null, data_entrada_sociedade: '2024-05-03', representante_legal_cpf: null, representante_legal_nome: null, faixa_etaria: null, empresa: { cnpj_basico: '00123456', razao_social: 'ALFA LTDA', natureza_juridica: null, porte_empresa: null } },
   ],
 }
 const fastPage = { count: null, next: null, previous: null, page: 1, page_size: 10 as const, has_next: false, has_previous: false, results: [maria] }
@@ -36,18 +36,37 @@ describe('busca agrupada de sócios', () => {
   beforeEach(() => { vi.clearAllMocks(); partnersMock.mockResolvedValue(fastPage) })
 
   it('renderiza todas as participações do grupo na ordem da API e preserva navegação e zeros', async () => {
+    const user = userEvent.setup()
     partnersMock.mockResolvedValue({ ...fastPage, results: [maria, { ...maria, nome_socio_ou_razao_social: 'ANA COSTA', participacoes_count: 1, participacoes: [maria.participacoes[0]] }] })
     renderPage()
     const groups = await screen.findAllByRole('article')
     const group = groups[0]
-    expect(groups.map(item => within(item).getByRole('heading').textContent)).toEqual(['MARIA SILVA', 'ANA COSTA'])
-    expect(within(group).getByRole('heading', { name: 'MARIA SILVA' })).toBeInTheDocument()
+    expect(groups.map(item => within(item).getByRole('button').textContent)).toEqual(['MARIA SILVA***123456**2 participações⌄', 'ANA COSTA***123456**1 participação⌄'])
     expect(within(group).getByText('***123456**')).toBeInTheDocument()
     expect(within(group).getByText('2 participações')).toBeInTheDocument()
+    expect(within(group).queryByRole('table')).not.toBeInTheDocument()
+    await user.click(within(group).getByRole('button', { name: /MARIA SILVA/ }))
     expect(within(group).getAllByRole('link').map(link => link.getAttribute('aria-label'))).toEqual(['Ver empresa ZETA EMPRESA SA', 'Ver empresa ALFA LTDA'])
     expect(within(group).getByText('00123456')).toBeInTheDocument()
     expect(within(group).getByRole('link', { name: 'Ver empresa ALFA LTDA' })).toHaveAttribute('href', '/receita-federal/cnpj/empresas/00123456?return_to=%2Freceita-federal%2Fcnpj%2Fsocios%3Fq%3Dmaria%26page%3D1')
     expect(partnersMock).toHaveBeenCalledWith({ q: 'maria', page: 1, page_size: 10 }, expect.any(AbortSignal))
+  })
+
+  it('ordena somente a tabela aberta por empresa e entrada nas duas direções', async () => {
+    const user = userEvent.setup()
+    renderPage()
+    const group = await screen.findByRole('article')
+    await user.click(within(group).getByRole('button', { name: /MARIA SILVA/ }))
+    const companyOrder = () => within(group).getAllByRole('link').map(link => link.getAttribute('aria-label'))
+    expect(companyOrder()).toEqual(['Ver empresa ZETA EMPRESA SA', 'Ver empresa ALFA LTDA'])
+    await user.click(within(group).getByRole('button', { name: /Ordenar por empresa/ }))
+    expect(companyOrder()).toEqual(['Ver empresa ALFA LTDA', 'Ver empresa ZETA EMPRESA SA'])
+    await user.click(within(group).getByRole('button', { name: /Ordenar por empresa/ }))
+    expect(companyOrder()).toEqual(['Ver empresa ZETA EMPRESA SA', 'Ver empresa ALFA LTDA'])
+    await user.click(within(group).getByRole('button', { name: /Ordenar por entrada/ }))
+    expect(companyOrder()).toEqual(['Ver empresa ZETA EMPRESA SA', 'Ver empresa ALFA LTDA'])
+    await user.click(within(group).getByRole('button', { name: /Ordenar por entrada/ }))
+    expect(companyOrder()).toEqual(['Ver empresa ALFA LTDA', 'Ver empresa ZETA EMPRESA SA'])
   })
 
   it('mostra documento ausente sem presumir identidade e não dispara chamadas N+1', async () => {
