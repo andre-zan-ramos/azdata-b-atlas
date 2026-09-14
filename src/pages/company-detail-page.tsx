@@ -32,7 +32,6 @@ export function CompanyDetailPage() {
     </div>
     <h2 className="section-title">Estabelecimentos</h2>
     {establishments.length ? <div className="cards">{establishments.map(establishment => <article className="result-card" key={establishment.id}><div><span className="meta">{formatCnpj(establishment.cnpj)} · {establishment.municipio?.descricao || 'Município não informado'}/{establishment.uf}</span><h3>{establishment.nome_fantasia || establishment.razao_social}</h3></div><Link to={`/receita-federal/cnpj/estabelecimentos/${establishment.cnpj}?return_to=${encodeURIComponent(companyReturn)}`}>Ver estabelecimento →</Link></article>)}</div> : <p>Não há estabelecimentos informados.</p>}
-    <p className="hint"><Link to={`/receita-federal/cnpj?q=${company.cnpj_basico}&page=1`}>Consultar unidades na busca</Link></p>
     <h2 className="section-title">Quadro societário</h2>
     <div className="cards">{company.socios.map((partner, index) => <article className="result-card" key={`${partner.identificador_socio}-${index}`}><div><h3><Link className="partner-name-link" to={partnerSearchPath(partner)}>{partner.nome_socio_ou_razao_social}</Link></h3><span className="meta">{partner.cnpj_cpf_socio || 'Documento não informado'} · {partner.qualificacao_socio?.descricao || 'Qualificação não informada'} · entrada {formatDate(partner.data_entrada_sociedade)}</span></div></article>)}</div>
   </section>
