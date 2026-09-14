@@ -7,6 +7,7 @@ import { adaptPage, pageFromSearch } from '../api/receita-federal/cnpj/paginatio
 import type { PageSize } from '../api/receita-federal/cnpj/types'
 import { Pagination } from '../components/pagination'
 import { Empty, QueryError } from '../components/query-state'
+import { partnerSearchPath } from '../utils/partners'
 
 const PAGE_SIZE: PageSize = 10
 const DATE_FORMATTER = new Intl.DateTimeFormat('pt-BR', { timeZone: 'UTC' })
@@ -48,7 +49,7 @@ export function PartnersPage() {
       <div className="table-wrap"><table><thead><tr><th>Sócio</th><th>Empresa</th><th>CNPJ básico</th><th>Qualificação</th><th>Entrada</th></tr></thead><tbody>{view.results.map(item => {
         const returnTo = `${location.pathname}${location.search}`
         const target = `/receita-federal/cnpj/empresas/${item.empresa.cnpj_basico}?return_to=${encodeURIComponent(returnTo)}`
-        return <tr className="clickable-row" key={item.id}><td><Link className="row-link" to={target} aria-label={`Ver empresa ${item.empresa.razao_social}`} /><span>{item.nome_socio_ou_razao_social}</span><small className="meta">Documento: {item.cnpj_cpf_socio || 'não informado'}</small></td><td>{item.empresa.razao_social}</td><td>{item.empresa.cnpj_basico}</td><td>{item.qualificacao_socio?.descricao || '—'}</td><td>{item.data_entrada_sociedade ? DATE_FORMATTER.format(new Date(`${item.data_entrada_sociedade}T00:00:00Z`)) : '—'}</td></tr>
+        return <tr className="clickable-row" key={item.id}><td><Link className="row-link" to={target} aria-label={`Ver empresa ${item.empresa.razao_social}`} /><Link className="partner-name-link table-partner-link" to={partnerSearchPath(item)}>{item.nome_socio_ou_razao_social}</Link><small className="meta">Documento: {item.cnpj_cpf_socio || 'não informado'}</small></td><td>{item.empresa.razao_social}</td><td>{item.empresa.cnpj_basico}</td><td>{item.qualificacao_socio?.descricao || '—'}</td><td>{item.data_entrada_sociedade ? DATE_FORMATTER.format(new Date(`${item.data_entrada_sociedade}T00:00:00Z`)) : '—'}</td></tr>
       })}</tbody></table></div>
       <Pagination page={view.page} pageSize={view.pageSize} count={view.count} previous={view.hasPrevious} next={view.hasNext} onPage={changePage} />
     </> : null}

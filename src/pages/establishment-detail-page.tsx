@@ -4,6 +4,7 @@ import { cnpjApi } from '../api/receita-federal/cnpj/client'
 import { QueryError } from '../components/query-state'
 import { codedChoice, display, formatCnpj, formatDate, formatMoney } from '../utils/format'
 import { internalReturnTo } from '../utils/navigation'
+import { partnerSearchPath } from '../utils/partners'
 
 const Field = ({ label, value }: { label: string; value: unknown }) => <><dt>{label}</dt><dd>{display(value)}</dd></>
 
@@ -37,6 +38,6 @@ export function EstablishmentDetailPage() {
     <div className="detail-card"><p><strong>Principal:</strong> {establishment.cnae_fiscal_principal ? `${establishment.cnae_fiscal_principal.codigo} · ${establishment.cnae_fiscal_principal.descricao}` : 'Não informado'}</p>{establishment.cnaes_secundarios.length > 0 && <ul>{establishment.cnaes_secundarios.map(cnae => <li key={`${cnae.codigo}-${cnae.ordem}`}>{cnae.codigo} · {cnae.descricao}</li>)}</ul>}</div>
     <h2 className="section-title">Sócios da empresa</h2>
     <p className="hint">Este quadro pertence à empresa {establishment.empresa.razao_social}, não exclusivamente a este estabelecimento.</p>
-    {establishment.socios.length ? <div className="cards">{establishment.socios.map((partner, index) => <article className="result-card" key={`${partner.identificador_socio}-${index}`}><div><h3>{partner.nome_socio_ou_razao_social}</h3><span className="meta">{partner.cnpj_cpf_socio || 'Documento não informado'} · {partner.qualificacao_socio?.descricao || 'Qualificação não informada'}</span></div></article>)}</div> : <p>Não há sócios informados.</p>}
+    {establishment.socios.length ? <div className="cards">{establishment.socios.map((partner, index) => <article className="result-card" key={`${partner.identificador_socio}-${index}`}><div><h3><Link className="partner-name-link" to={partnerSearchPath(partner)}>{partner.nome_socio_ou_razao_social}</Link></h3><span className="meta">{partner.cnpj_cpf_socio || 'Documento não informado'} · {partner.qualificacao_socio?.descricao || 'Qualificação não informada'}</span></div></article>)}</div> : <p>Não há sócios informados.</p>}
   </section>
 }

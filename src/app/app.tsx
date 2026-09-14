@@ -19,7 +19,7 @@ function AppShell() {
           <NavLink to="/" end>Início</NavLink>
           <NavLink to="/receita-federal/cnpj" end>Empresas</NavLink>
           <NavLink to="/receita-federal/cnpj/socios">Sócios</NavLink>
-          <span className="soon">CNO <small>Em breve</small></span>
+          <span className="soon">Obras <small>Em breve</small></span>
         </nav>
       </header>
       <main id="main" tabIndex={-1}><Outlet /></main>
