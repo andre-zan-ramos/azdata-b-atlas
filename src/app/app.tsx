@@ -5,7 +5,6 @@ import { EstablishmentsPage } from '../pages/establishments-page'
 import { EstablishmentDetailPage } from '../pages/establishment-detail-page'
 import { CompanyDetailPage } from '../pages/company-detail-page'
 import { PartnersPage } from '../pages/partners-page'
-import { JudicialProcessSearchPage } from '../pages/judicial-process-search-page'
 import { PartnerDetailPage } from '../pages/partner-detail-page'
 
 function AppShell() {
@@ -21,7 +20,6 @@ function AppShell() {
           <NavLink to="/" end>Início</NavLink>
           <NavLink to="/receita-federal/cnpj" end>Empresas</NavLink>
           <NavLink to="/receita-federal/cnpj/socios">Sócios</NavLink>
-          <NavLink to="/judicial/tjmg/processes">Processos</NavLink>
           <span className="soon">Obras <small>Em breve</small></span>
         </nav>
       </header>
@@ -43,7 +41,6 @@ export function App() {
         <Route path="receita-federal/cnpj/empresas/:cnpjBasico" element={<CompanyDetailPage />} />
         <Route path="receita-federal/cnpj/socios" element={<PartnersPage />} />
         <Route path="receita-federal/cnpj/socios/detalhes" element={<PartnerDetailPage />} />
-        <Route path="judicial/tjmg/processes" element={<JudicialProcessSearchPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>
     </Routes>
