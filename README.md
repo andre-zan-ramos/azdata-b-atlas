@@ -2,6 +2,10 @@
 
 SPA React para exploração de empresas e estabelecimentos da Receita Federal por meio da API AzData.
 
+Também consome a capacidade judicial da AzData API para consultar processos
+públicos do TJMG por nome e, na página de um estabelecimento, por seu CNPJ
+completo. O navegador nunca acessa o serviço externo do TJMG diretamente.
+
 ## Executar
 
 Node 22.14 ou superior e npm. Na raiz:

@@ -1,6 +1,9 @@
 import { useQuery } from '@tanstack/react-query'
+import { useState } from 'react'
 import { Link, useLocation, useParams, useSearchParams } from 'react-router'
 import { cnpjApi } from '../api/receita-federal/cnpj/client'
+import { judicialApi } from '../api/judicial/client'
+import { JudicialProcessList } from '../components/judicial-process-list'
 import { QueryError } from '../components/query-state'
 import { PartnerLink } from '../components/partner-link'
 import { codedChoice, display, formatCnpj, formatDate, formatMoney } from '../utils/format'
@@ -13,6 +16,21 @@ function establishmentType(value: number | string) {
   if (normalized === '1' || normalized === 'matriz') return 'Matriz'
   if (normalized === '2' || normalized === 'filial') return 'Filial'
   return display(value)
+}
+
+function EstablishmentJudicialProcesses({ cnpj, names }: { cnpj: string; names: string[] }) {
+  const [page, setPage] = useState(1)
+  const query = useQuery({
+    queryKey: ['judicial', 'tjmg', 'document', cnpj, page],
+    queryFn: ({ signal }) => judicialApi.byDocument(cnpj, { page, page_size: 10 }, signal),
+    retry: false,
+  })
+  return <section className="establishment-judicial" aria-labelledby="judicial-processes-title">
+    <header><p className="eyebrow">TJMG</p><h2 id="judicial-processes-title">Processos judiciais</h2><p className="hint">Consulta pública feita sob demanda para o CNPJ deste estabelecimento.</p></header>
+    {query.isPending ? <div className="state" role="status">Consultando processos no TJMG…</div> : null}
+    {query.isError ? <QueryError error={query.error} retry={() => query.refetch()} /> : null}
+    {query.data ? <JudicialProcessList data={query.data} onPage={setPage} referenceNames={names} /> : null}
+  </section>
 }
 
 export function EstablishmentDetailPage() {
@@ -50,5 +68,6 @@ export function EstablishmentDetailPage() {
     <h2 className="section-title">Sócios da empresa</h2>
     <p className="hint">Este quadro pertence à empresa {establishment.empresa.razao_social}, não exclusivamente a este estabelecimento.</p>
     {establishment.socios.length ? <div className="cards">{establishment.socios.map((partner, index) => <article className="result-card" key={`${partner.identificador_socio}-${index}`}><div><h3><PartnerLink partner={partner} returnTo={establishmentReturn} /></h3><span className="meta">{partner.cnpj_cpf_socio || 'Documento não informado'} · {partner.qualificacao_socio?.descricao || 'Qualificação não informada'}</span></div></article>)}</div> : <p>Não há sócios informados.</p>}
+    <EstablishmentJudicialProcesses cnpj={establishment.cnpj} names={[establishment.empresa.razao_social, establishment.nome_fantasia].filter((name): name is string => Boolean(name))} />
   </section>
 }
