@@ -42,13 +42,19 @@ function ExternalActions({ process }: { process: JudicialProcessSummary }) {
   const processUrl = tjmgProcessUrl(process)
   const documentsUrl = tjmgDocumentsUrl(process)
   return <div className="process-external-actions">
-    {processUrl ? <a href={processUrl} target="_blank" rel="noreferrer">Ver no TJMG <span aria-hidden="true">↗</span></a> : null}
-    {documentsUrl ? <a href={documentsUrl} target="_blank" rel="noreferrer">Documentos no TJMG <span aria-hidden="true">↗</span></a> : null}
+    {processUrl ? <a href={processUrl} target="_blank" rel="noreferrer" onClick={event => event.stopPropagation()}>Ver no TJMG <span aria-hidden="true">↗</span></a> : null}
+    {documentsUrl ? <a href={documentsUrl} target="_blank" rel="noreferrer" onClick={event => event.stopPropagation()}>Documentos no TJMG <span aria-hidden="true">↗</span></a> : null}
   </div>
 }
 
 function PartyList({ title, names }: { title: string; names: string[] }) {
   return <section><h4>{title}</h4>{names.length ? <ul>{names.map(name => <li key={name}>{name}</li>)}</ul> : <p>Não informado</p>}</section>
+}
+
+function relatedParties(process: JudicialProcessSummary, relation: Relation) {
+  if (relation === 'plaintiff') return { label: 'Polo passivo', names: process.defendant_names }
+  if (relation === 'defendant') return { label: 'Polo ativo', names: process.plaintiff_names }
+  return { label: 'Partes principais', names: [...new Set([...process.plaintiff_names, ...process.defendant_names])] }
 }
 
 function ProcessDialog({ process, onClose }: { process: JudicialProcessSummary; onClose: () => void }) {
@@ -76,13 +82,14 @@ function ProcessDialog({ process, onClose }: { process: JudicialProcessSummary; 
 
 function ProcessTable({ processes, relation }: { processes: JudicialProcessSummary[]; relation: Relation }) {
   const [selected, setSelected] = useState<JudicialProcessSummary | null>(null)
+  const relatedLabel = relatedParties(processes[0], relation).label
   return <section className="process-group" aria-labelledby={`process-group-${relation}`}>
     <header><h2 id={`process-group-${relation}`}>{relationLabels[relation]}</h2><span>{processes.length} {processes.length === 1 ? 'processo' : 'processos'} nesta página</span></header>
-    <div className="table-wrap process-table"><table><thead><tr><th>Processo</th><th>Classe e assunto</th><th>Comarca</th><th>Distribuição</th><th>Situação</th><th>Ações</th></tr></thead><tbody>{processes.map(process => <tr className="clickable-row" key={process.cnj_number}>
-      <td><button className="row-dialog-trigger" type="button" onClick={() => setSelected(process)} aria-label={`Ver detalhes do processo ${formatCnj(process.cnj_number)}`} /><strong>{formatCnj(process.cnj_number)}</strong><small>{process.court}</small></td>
+    <div className="table-wrap process-table"><table><thead><tr><th>Processo</th><th>Classe e assunto</th><th>{relatedLabel}</th><th>Comarca</th><th>Distribuição</th><th>Situação</th><th>Ações</th></tr></thead><tbody>{processes.map(process => { const related = relatedParties(process, relation); return <tr className="clickable-row" key={process.cnj_number} onClick={() => setSelected(process)}>
+      <td><button className="row-dialog-trigger" type="button" aria-label={`Ver detalhes do processo ${formatCnj(process.cnj_number)}`} /><strong>{formatCnj(process.cnj_number)}</strong><small>{process.court}</small></td>
       <td><strong>{display(process.class_name)}</strong><small>{process.subjects[0] || 'Assunto não informado'}</small></td>
-      <td>{display(process.district)}</td><td>{formatDate(process.filing_date)}</td><td><span className={`process-status ${process.status_group}`}>{statusLabels[process.status_group]}</span></td><td><ExternalActions process={process} /></td>
-    </tr>)}</tbody></table></div>
+      <td className="related-parties">{related.names.length ? related.names.map(name => <span key={name}>{name}</span>) : 'Não informado'}</td><td>{display(process.district)}</td><td>{formatDate(process.filing_date)}</td><td><span className={`process-status ${process.status_group}`}>{statusLabels[process.status_group]}</span></td><td><ExternalActions process={process} /></td>
+    </tr>})}</tbody></table></div>
     {selected ? <ProcessDialog process={selected} onClose={() => setSelected(null)} /> : null}
   </section>
 }
