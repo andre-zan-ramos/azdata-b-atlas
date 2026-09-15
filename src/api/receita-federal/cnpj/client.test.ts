@@ -10,6 +10,9 @@ describe('contrato CNPJ', () => {
   it('serializa todos os parâmetros da busca unificada sem enviar vazios', () => {
     expect(serializeParams({ q:'atlas',page:2,page_size:25,include_total:false,uf:'MG',municipio:'4123',cnae:'6201501',situacao_cadastral:'2',matriz_filial:'1',porte:'03',natureza_juridica:'2062',ignorado:'' }).toString()).toBe('q=atlas&page=2&page_size=25&include_total=false&uf=MG&municipio=4123&cnae=6201501&situacao_cadastral=2&matriz_filial=1&porte=03&natureza_juridica=2062')
   })
+  it.each(['contendo', 'inicio', 'fim', 'exato'] as const)('serializa q_modo=%s no cliente', mode => {
+    expect(serializeParams({ q: 'atlas', q_modo: mode }).toString()).toBe(`q=atlas&q_modo=${mode}`)
+  })
   it('usa prefixo e barras finais nos seis endpoints', async () => {
     const adapter = vi.fn<AxiosAdapter>(async config => ({ data: { results: [] }, status: 200, statusText: 'OK', headers: {}, config }))
     const api = createCnpjApi(axios.create({ adapter }))
@@ -34,10 +37,16 @@ describe('contrato CNPJ', () => {
     const adapter = vi.fn<AxiosAdapter>(async config => ({ data: { results: [] }, status: 200, statusText: 'OK', headers: {}, config }))
     const api = createCnpjApi(axios.create({ adapter }))
     const controller = new AbortController()
-    await api.partners({ q: 'maria', page: 2, page_size: 25, include_total: undefined }, controller.signal)
+    await api.partners({ q: 'maria', q_modo: 'fim', page: 2, page_size: 25, include_total: undefined }, controller.signal)
     expect(adapter).toHaveBeenCalledOnce()
     expect(adapter.mock.calls[0][0].signal).toBe(controller.signal)
-    expect(String(adapter.mock.calls[0][0].params)).toBe('q=maria&page=2&page_size=25&agrupar=true')
+    expect(String(adapter.mock.calls[0][0].params)).toBe('q=maria&q_modo=fim&page=2&page_size=25&agrupar=true')
+  })
+  it.each(['00123456', '00123456000199'])('mantém a busca de CNPJ %s sem inventar parâmetros', async q => {
+    const adapter = vi.fn<AxiosAdapter>(async config => ({ data: { results: [] }, status: 200, statusText: 'OK', headers: {}, config }))
+    const api = createCnpjApi(axios.create({ adapter }))
+    await api.search({ q })
+    expect(String(adapter.mock.calls[0][0].params)).toBe(`q=${q}`)
   })
   it('adapta paginação com e sem contagem', () => {
     expect(adaptPage({ count:null,next:'x',previous:null,page:2,page_size:10,has_next:true,has_previous:true,results:[] },2,10)).toMatchObject({count:null,page:2,hasNext:true})

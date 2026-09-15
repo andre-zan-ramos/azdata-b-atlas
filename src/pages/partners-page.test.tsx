@@ -50,7 +50,7 @@ describe('busca agrupada de sócios', () => {
     expect(within(within(group).getByRole('table')).getAllByRole('link').map(link => link.getAttribute('aria-label'))).toEqual(['Ver empresa ZETA EMPRESA SA', 'Ver empresa ALFA LTDA'])
     expect(within(group).getByText('00123456')).toBeInTheDocument()
     expect(within(group).getByRole('link', { name: 'Ver empresa ALFA LTDA' })).toHaveAttribute('href', '/receita-federal/cnpj/empresas/00123456?return_to=%2Freceita-federal%2Fcnpj%2Fsocios%3Fq%3Dmaria%26page%3D1')
-    expect(partnersMock).toHaveBeenCalledWith({ q: 'maria', page: 1, page_size: 10 }, expect.any(AbortSignal))
+    expect(partnersMock).toHaveBeenCalledWith({ q: 'maria', q_modo: 'contendo', page: 1, page_size: 10 }, expect.any(AbortSignal))
   })
 
   it('ordena somente a tabela aberta por empresa e entrada nas duas direções', async () => {
@@ -88,7 +88,7 @@ describe('busca agrupada de sócios', () => {
     expect(screen.getByRole('button', { name: 'Anterior' })).toBeEnabled()
     expect(screen.getByRole('button', { name: 'Próxima' })).toBeEnabled()
     await user.click(screen.getByRole('button', { name: 'Próxima' }))
-    await waitFor(() => expect(partnersMock).toHaveBeenLastCalledWith({ q: 'maria', page: 3, page_size: 10 }, expect.any(AbortSignal)))
+    await waitFor(() => expect(partnersMock).toHaveBeenLastCalledWith({ q: 'maria', q_modo: 'contendo', page: 3, page_size: 10 }, expect.any(AbortSignal)))
   })
 
   it('valida termos curtos junto ao campo sem chamar a API', () => {
@@ -114,7 +114,30 @@ describe('busca agrupada de sócios', () => {
     expect(await screen.findByRole('textbox', { name: 'Encontre um sócio' })).toHaveValue('maria')
     await user.click(screen.getByRole('button', { name: 'Voltar no histórico' }))
     await waitFor(() => expect(screen.getByRole('textbox', { name: 'Encontre um sócio' })).toHaveValue('ana'))
-    await waitFor(() => expect(partnersMock).toHaveBeenCalledWith({ q: 'ana', page: 3, page_size: 10 }, expect.any(AbortSignal)))
+    await waitFor(() => expect(partnersMock).toHaveBeenCalledWith({ q: 'ana', q_modo: 'contendo', page: 3, page_size: 10 }, expect.any(AbortSignal)))
     expect(partnersMock.mock.calls.every(call => call[1] instanceof AbortSignal)).toBe(true)
+  })
+
+  it('restaura o modo e envia q_modo com o agrupamento mantido pelo cliente', async () => {
+    renderPage(['/receita-federal/cnpj/socios?q=maria&q_modo=fim&page=2'])
+    await screen.findByRole('article')
+    expect(screen.getByRole('combobox', { name: 'Modo de correspondência' })).toHaveValue('fim')
+    expect(partnersMock).toHaveBeenCalledWith({ q: 'maria', q_modo: 'fim', page: 2, page_size: 10 }, expect.any(AbortSignal))
+  })
+
+  it('muda o modo, reinicia a página e preserva return_to', async () => {
+    const user = userEvent.setup()
+    renderPage(['/receita-federal/cnpj/socios?q=maria&q_modo=inicio&page=4&return_to=%2Forigem'])
+    await screen.findByRole('article')
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Modo de correspondência' }), 'exato')
+    await waitFor(() => expect(partnersMock).toHaveBeenLastCalledWith({ q: 'maria', q_modo: 'exato', page: 1, page_size: 10 }, expect.any(AbortSignal)))
+    expect(screen.getByRole('link', { name: 'Ver detalhes' }).getAttribute('href')).toContain('return_to=%2Freceita-federal%2Fcnpj%2Fsocios%3Fq%3Dmaria%26q_modo%3Dexato%26page%3D1%26return_to%3D%252Forigem')
+  })
+
+  it('normaliza modo inválido para contendo sem enviá-lo à API', async () => {
+    renderPage(['/receita-federal/cnpj/socios?q=maria&q_modo=aproximado&page=2'])
+    await screen.findByRole('article')
+    expect(screen.getByRole('combobox', { name: 'Modo de correspondência' })).toHaveValue('contendo')
+    expect(partnersMock.mock.calls.every(([params]) => params.q_modo === 'contendo')).toBe(true)
   })
 })

@@ -4,9 +4,11 @@ import { Link, useLocation, useSearchParams } from 'react-router'
 import { ApiError } from '../api/errors'
 import { cnpjApi } from '../api/receita-federal/cnpj/client'
 import { adaptPage, pageFromSearch } from '../api/receita-federal/cnpj/pagination'
-import type { GroupedPartnerSearchItem, PageSize, PartnerParticipation } from '../api/receita-federal/cnpj/types'
+import { isInvalidTextMatchMode, textMatchModeFromSearch } from '../api/receita-federal/cnpj/match-mode'
+import type { GroupedPartnerSearchItem, PageSize, PartnerParticipation, TextMatchMode } from '../api/receita-federal/cnpj/types'
 import { Pagination } from '../components/pagination'
 import { Empty, QueryError } from '../components/query-state'
+import { TextMatchModeSelect } from '../components/text-match-mode-select'
 import { partnerDetailPath } from '../utils/partners'
 
 const PAGE_SIZE: PageSize = 10
@@ -52,10 +54,18 @@ export function PartnersPage() {
   const [search, setSearch] = useSearchParams()
   const location = useLocation()
   const term = search.get('q')?.trim() ?? ''
+  const rawQMode = search.get('q_modo')
+  const qMode = textMatchModeFromSearch(rawQMode)
   const [inputValue, setInputValue] = useState(term)
   useEffect(() => setInputValue(term), [term])
+  useEffect(() => {
+    if (!isInvalidTextMatchMode(rawQMode)) return
+    const next = new URLSearchParams(search)
+    next.set('q_modo', 'contendo')
+    setSearch(next, { replace: true })
+  }, [rawQMode, search, setSearch])
   const page = pageFromSearch(search.get('page'))
-  const params = { q: term, page, page_size: PAGE_SIZE }
+  const params = { q: term, q_modo: qMode, page, page_size: PAGE_SIZE }
   const searchable = term.length >= 3
   const query = useQuery({ queryKey: ['cnpj', 'partners', params], enabled: searchable, queryFn: ({ signal }) => cnpjApi.partners(params, signal) })
   const localQError = term && !searchable ? 'Informe ao menos 3 caracteres.' : undefined
@@ -65,16 +75,17 @@ export function PartnersPage() {
   const submit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     const value = inputValue.trim()
-    const next = new URLSearchParams()
-    if (value) { next.set('q', value); next.set('page', '1') }
+    const next = new URLSearchParams(search)
+    if (value) { next.set('q', value); next.set('q_modo', qMode); next.set('page', '1') } else { next.delete('q'); next.delete('page') }
     setSearch(next)
   }
   const changePage = (value: number) => { const next = new URLSearchParams(search); next.set('page', String(value)); setSearch(next) }
+  const changeMode = (value: TextMatchMode) => { const next = new URLSearchParams(search); next.set('q_modo', value); next.set('page', '1'); setSearch(next) }
 
   return <section className="search-page">
     <form className={`unified-search${term ? ' compact' : ''}`} onSubmit={submit} role="search">
       <label htmlFor="partner-search">Encontre um sócio</label>
-      <div className="search-row"><input id="partner-search" name="q" value={inputValue} onChange={event => setInputValue(event.target.value)} autoFocus aria-invalid={Boolean(qError)} aria-describedby={qError ? 'partner-search-error' : 'partner-search-help'} placeholder="Digite o nome da pessoa ou empresa sócia" /><button>Buscar</button></div>
+      <div className="search-row"><input id="partner-search" name="q" value={inputValue} onChange={event => setInputValue(event.target.value)} autoFocus aria-invalid={Boolean(qError)} aria-describedby={qError ? 'partner-search-error' : 'partner-search-help'} placeholder="Digite o nome da pessoa ou empresa sócia" /><TextMatchModeSelect value={qMode} onChange={changeMode} /><button>Buscar</button></div>
       {qError ? <p className="field-error" id="partner-search-error">{qError}</p> : <p id="partner-search-help">A busca agrupa participações pelo nome e documento mascarado informados pela fonte. O agrupamento não comprova uma identidade civil única.</p>}
     </form>
     {query.isPending && searchable ? <div className="inline-message" role="status">Buscando…</div> : null}

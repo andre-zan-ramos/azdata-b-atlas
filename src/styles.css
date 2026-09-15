@@ -54,6 +54,9 @@ button { padding: 9px 14px; border: 0; border-radius: 5px; background: var(--bra
 .unified-search > label { margin-bottom: 9px; color: #263f37; font-size: 14px; font-weight: 700; }
 .search-row { display: flex; gap: 8px; max-width: 820px; }
 .search-row input { min-height: 44px; padding: 10px 13px; border-color: #aab9b0; font-size: 15px; }
+.match-mode-control { width: 176px; flex: 0 0 176px; }
+.match-mode-control > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.match-mode-control select { min-height: 44px; border-color: #aab9b0; }
 .search-row button { min-width: 92px; }
 .unified-search p { margin: 7px 0 0; color: var(--muted); font-size: 11px; }
 .unified-search .field-error { color: #9a3528; }
@@ -61,6 +64,7 @@ button { padding: 9px 14px; border: 0; border-radius: 5px; background: var(--bra
 .unified-search.compact > label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .unified-search.compact .search-row { max-width: 680px; }
 .unified-search.compact .search-row input { min-height: 38px; padding-block: 7px; font-size: 14px; }
+.unified-search.compact .match-mode-control select { min-height: 38px; }
 .unified-search.compact .search-row button { padding-block: 7px; }
 .unified-search.compact > p:not(.field-error) { display: none; }
 .inline-message { margin-top: 16px; padding: 11px 13px; border-radius: 5px; background: #edf2ee; color: #42574f; font-size: 13px; }

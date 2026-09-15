@@ -1,12 +1,12 @@
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { FormEvent, KeyboardEvent, useEffect, useRef, useState } from 'react'
 import { cnpjApi } from '../api/receita-federal/cnpj/client'
-import type { LocationFacetFilters, LocationFacetItem } from '../api/receita-federal/cnpj/types'
+import type { LocationFacetFilters, LocationFacetItem, TextMatchMode } from '../api/receita-federal/cnpj/types'
 
 type FacetContext = Omit<LocationFacetFilters, 'q' | 'page' | 'page_size' | 'descricao'>
 type Selection = { uf: string; municipio: string } | null
 
-export function LocationFacetFilter({ q, filters, selected, onSelect }: { q: string; filters: FacetContext; selected: Selection; onSelect: (selection: Selection) => void }) {
+export function LocationFacetFilter({ q, qMode, filters, selected, onSelect }: { q: string; qMode: TextMatchMode; filters: FacetContext; selected: Selection; onSelect: (selection: Selection) => void }) {
   const rootRef = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
   const searchRef = useRef<HTMLInputElement>(null)
@@ -14,9 +14,9 @@ export function LocationFacetFilter({ q, filters, selected, onSelect }: { q: str
   const [description, setDescription] = useState('')
   const [appliedDescription, setAppliedDescription] = useState('')
   const query = useInfiniteQuery({
-    queryKey: ['cnpj', 'search', 'location-facets', q, filters, appliedDescription], enabled: open,
+    queryKey: ['cnpj', 'search', 'location-facets', q, qMode, filters, appliedDescription], enabled: open,
     initialPageParam: 1,
-    queryFn: ({ pageParam, signal }) => cnpjApi.locationFacets({ q, ...filters, descricao: appliedDescription || undefined, page: pageParam, page_size: 50 }, signal),
+    queryFn: ({ pageParam, signal }) => cnpjApi.locationFacets({ q, q_modo: qMode, ...filters, descricao: appliedDescription || undefined, page: pageParam, page_size: 50 }, signal),
     getNextPageParam: (lastPage, pages) => lastPage.next ? pages.length + 1 : undefined,
   })
   useEffect(() => { if (open) searchRef.current?.focus() }, [open])
