@@ -7,6 +7,7 @@ import { adaptPage, pageFromSearch } from '../api/receita-federal/cnpj/paginatio
 import type { GroupedPartnerSearchItem, PageSize, PartnerParticipation } from '../api/receita-federal/cnpj/types'
 import { Pagination } from '../components/pagination'
 import { Empty, QueryError } from '../components/query-state'
+import { partnerDetailPath } from '../utils/partners'
 
 const PAGE_SIZE: PageSize = 10
 const DATE_FORMATTER = new Intl.DateTimeFormat('pt-BR', { timeZone: 'UTC' })
@@ -36,6 +37,7 @@ function PartnerGroup({ group, returnTo, groupIndex }: { group: GroupedPartnerSe
         <span className="partner-group-identity"><strong>{group.nome_socio_ou_razao_social}</strong><small className="meta">{group.cnpj_cpf_socio || 'Documento não informado'}</small></span>
         <span className="partner-group-summary"><strong>{group.participacoes_count} {group.participacoes_count === 1 ? 'participação' : 'participações'}</strong><span aria-hidden="true" className="accordion-icon">⌄</span></span>
       </button>
+      <Link aria-label="Ver detalhes" className="partner-detail-link" to={partnerDetailPath(group, returnTo)} state={{ partner: group }}>Ver detalhes →</Link>
     </header>
     {expanded ? <div className="partner-participations" id={regionId}>
       <table><thead><tr><th><span className="sortable-heading">Empresa <button type="button" className="sort-button" aria-label={`Ordenar por empresa; ${sortLabel('empresa', 'empresa')}`} onClick={() => changeSort('empresa')}>{sort?.field === 'empresa' ? (sort.direction === 'asc' ? '↑' : '↓') : '↕'}</button></span></th><th>CNPJ básico</th><th>Qualificação</th><th><span className="sortable-heading">Entrada <button type="button" className="sort-button" aria-label={`Ordenar por entrada; ${sortLabel('entrada', 'entrada')}`} onClick={() => changeSort('entrada')}>{sort?.field === 'entrada' ? (sort.direction === 'asc' ? '↑' : '↓') : '↕'}</button></span></th></tr></thead><tbody>{participations.map((participation: PartnerParticipation) => {
