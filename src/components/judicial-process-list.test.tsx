@@ -12,16 +12,23 @@ const data: JudicialProcessPage = {
 }
 
 describe('judicial process list', () => {
-  it('formata o processo, informa deduplicação e omite os polos dos detalhes', async () => {
-    render(<JudicialProcessList data={data} onPage={vi.fn()} />)
+  it('agrupa pela relação nominal e abre todos os polos em um dialog', async () => {
+    render(<JudicialProcessList data={data} onPage={vi.fn()} referenceNames={['Empresa Atlas']} />)
+    expect(screen.getByRole('heading', { name: 'Polo ativo' })).toBeInTheDocument()
+    expect(screen.getByText('1 processo nesta página')).toBeInTheDocument()
     expect(screen.getByText('5013929-27.2018.8.13.0105')).toBeInTheDocument()
-    expect(screen.getByText(/310\.000,00/)).toBeInTheDocument()
     expect(screen.getByText(/registro duplicado foi consolidado/)).toBeInTheDocument()
-    await userEvent.click(screen.getByRole('button', { name: 'Ver detalhes' }))
-    expect(screen.queryByText('Polo ativo')).not.toBeInTheDocument()
-    expect(screen.queryByText('Polo passivo')).not.toBeInTheDocument()
-    expect(screen.queryByText('EMPRESA ATLAS LTDA')).not.toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: /Ver detalhes do processo/ }))
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+    expect(screen.getByText(/310\.000,00/)).toBeInTheDocument()
+    expect(screen.getAllByText('Polo ativo')).toHaveLength(2)
+    expect(screen.getByText('Polo passivo')).toBeInTheDocument()
+    expect(screen.getByText('Outros participantes')).toBeInTheDocument()
+    expect(screen.getByText('EMPRESA ATLAS LTDA')).toBeInTheDocument()
+    expect(screen.getByText('OUTRA PARTE')).toBeInTheDocument()
     expect(screen.getByText('PJE → EPROC_1G')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: 'Fechar' }))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
   it('cria o deep link oficial sem utm e não oferece documentos fora do PJE', () => {
@@ -39,5 +46,14 @@ describe('judicial process list', () => {
     const pje = { ...data, results: [{ ...data.results[0], source_system: 'PJE' }] }
     render(<JudicialProcessList data={pje} onPage={vi.fn()} />)
     expect(screen.getByRole('link', { name: /Documentos no TJMG/ })).toHaveAttribute('href', 'https://visualizador-documento.tjmg.jus.br/processo/PJE/opaque%2Fid')
+  })
+
+  it('mantém o processo em todos os grupos nominais correspondentes', () => {
+    const multipleRoles = { ...data, duplicates_removed: 0, results: [{ ...data.results[0], defendant_names: ['EMPRESA ATLAS LTDA'], other_party_names: ['EMPRESA ATLAS LTDA'] }] }
+    render(<JudicialProcessList data={multipleRoles} onPage={vi.fn()} referenceNames={['Empresa Atlas Ltda']} />)
+    expect(screen.getByRole('heading', { name: 'Polo ativo' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Polo passivo' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Outros participantes' })).toBeInTheDocument()
+    expect(screen.getAllByText('5013929-27.2018.8.13.0105')).toHaveLength(3)
   })
 })
