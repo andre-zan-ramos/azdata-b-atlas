@@ -1,10 +1,29 @@
 import { useQuery } from '@tanstack/react-query'
+import { useState } from 'react'
 import { Link, useLocation, useParams, useSearchParams } from 'react-router'
+import { judicialApi } from '../api/judicial/client'
 import { cnpjApi } from '../api/receita-federal/cnpj/client'
+import { JudicialProcessList } from '../components/judicial-process-list'
 import { QueryError } from '../components/query-state'
 import { PartnerLink } from '../components/partner-link'
 import { display, formatCnpj, formatDate, formatMoney } from '../utils/format'
 import { internalReturnTo } from '../utils/navigation'
+
+function CompanyJudicialProcesses({ companyName }: { companyName: string }) {
+  const [page, setPage] = useState(1)
+  const query = useQuery({
+    queryKey: ['judicial', 'tjmg', 'party-name', companyName, page],
+    queryFn: ({ signal }) => judicialApi.byPartyName(companyName, { page, page_size: 10 }, signal),
+    retry: false,
+  })
+
+  return <section className="company-judicial judicial-search-results" aria-labelledby="company-judicial-title">
+    <div className="results-heading"><h2 id="company-judicial-title">Processos encontrados</h2><span>Busca por {companyName}</span></div>
+    {query.isPending ? <div className="inline-message" role="status">Consultando processos no TJMG…</div> : null}
+    {query.isError ? <QueryError error={query.error} retry={() => query.refetch()} /> : null}
+    {query.data ? <JudicialProcessList data={query.data} onPage={setPage} referenceNames={[companyName]} /> : null}
+  </section>
+}
 
 export function CompanyDetailPage() {
   const { cnpjBasico = '' } = useParams()
@@ -34,5 +53,6 @@ export function CompanyDetailPage() {
     {establishments.length ? <div className="cards">{establishments.map(establishment => <article className="result-card" key={establishment.id}><div><span className="meta">{formatCnpj(establishment.cnpj)} · {establishment.municipio?.descricao || 'Município não informado'}/{establishment.uf}</span><h3>{establishment.nome_fantasia || establishment.razao_social}</h3></div><Link to={`/receita-federal/cnpj/estabelecimentos/${establishment.cnpj}?return_to=${encodeURIComponent(companyReturn)}`}>Ver estabelecimento →</Link></article>)}</div> : <p>Não há estabelecimentos informados.</p>}
     <h2 className="section-title">Quadro societário</h2>
     <div className="cards">{company.socios.map((partner, index) => <article className="result-card" key={`${partner.identificador_socio}-${index}`}><div><h3><PartnerLink partner={partner} returnTo={companyReturn} /></h3><span className="meta">{partner.cnpj_cpf_socio || 'Documento não informado'} · {partner.qualificacao_socio?.descricao || 'Qualificação não informada'} · entrada {formatDate(partner.data_entrada_sociedade)}</span></div></article>)}</div>
+    <CompanyJudicialProcesses companyName={company.razao_social} />
   </section>
 }
