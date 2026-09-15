@@ -18,7 +18,7 @@ function establishmentType(value: number | string) {
   return display(value)
 }
 
-function EstablishmentJudicialProcesses({ cnpj, names }: { cnpj: string; names: string[] }) {
+function EstablishmentJudicialProcesses({ cnpj }: { cnpj: string }) {
   const [page, setPage] = useState(1)
   const query = useQuery({
     queryKey: ['judicial', 'tjmg', 'document', cnpj, page],
@@ -29,7 +29,7 @@ function EstablishmentJudicialProcesses({ cnpj, names }: { cnpj: string; names: 
     <header><p className="eyebrow">TJMG</p><h2 id="judicial-processes-title">Processos judiciais</h2><p className="hint">Consulta pública feita sob demanda para o CNPJ deste estabelecimento.</p></header>
     {query.isPending ? <div className="state" role="status">Consultando processos no TJMG…</div> : null}
     {query.isError ? <QueryError error={query.error} retry={() => query.refetch()} /> : null}
-    {query.data ? <JudicialProcessList data={query.data} onPage={setPage} referenceNames={names} /> : null}
+    {query.data ? <JudicialProcessList data={query.data} onPage={setPage} /> : null}
   </section>
 }
 
@@ -68,6 +68,6 @@ export function EstablishmentDetailPage() {
     <h2 className="section-title">Sócios da empresa</h2>
     <p className="hint">Este quadro pertence à empresa {establishment.empresa.razao_social}, não exclusivamente a este estabelecimento.</p>
     {establishment.socios.length ? <div className="cards">{establishment.socios.map((partner, index) => <article className="result-card" key={`${partner.identificador_socio}-${index}`}><div><h3><PartnerLink partner={partner} returnTo={establishmentReturn} /></h3><span className="meta">{partner.cnpj_cpf_socio || 'Documento não informado'} · {partner.qualificacao_socio?.descricao || 'Qualificação não informada'}</span></div></article>)}</div> : <p>Não há sócios informados.</p>}
-    <EstablishmentJudicialProcesses cnpj={establishment.cnpj} names={[establishment.empresa.razao_social, establishment.nome_fantasia].filter((name): name is string => Boolean(name))} />
+    <EstablishmentJudicialProcesses cnpj={establishment.cnpj} />
   </section>
 }
