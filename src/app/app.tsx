@@ -6,6 +6,8 @@ import { EstablishmentDetailPage } from '../pages/establishment-detail-page'
 import { CompanyDetailPage } from '../pages/company-detail-page'
 import { PartnersPage } from '../pages/partners-page'
 import { PartnerDetailPage } from '../pages/partner-detail-page'
+import { CnoSearchPage } from '../pages/cno-search-page'
+import { CnoDetailPage } from '../pages/cno-detail-page'
 
 function AppShell() {
   return (
@@ -20,7 +22,7 @@ function AppShell() {
           <NavLink to="/" end>Início</NavLink>
           <NavLink to="/receita-federal/cnpj" end>Empresas</NavLink>
           <NavLink to="/receita-federal/cnpj/socios">Sócios</NavLink>
-          <span className="soon">Obras <small>Em breve</small></span>
+          <NavLink to="/receita-federal/cno">Obras</NavLink>
         </nav>
       </header>
       <main id="main" tabIndex={-1}><Outlet /></main>
@@ -41,6 +43,9 @@ export function App() {
         <Route path="receita-federal/cnpj/empresas/:cnpjBasico" element={<CompanyDetailPage />} />
         <Route path="receita-federal/cnpj/socios" element={<PartnersPage />} />
         <Route path="receita-federal/cnpj/socios/detalhes" element={<PartnerDetailPage />} />
+        <Route path="receita-federal/cno" element={<CnoSearchPage key="obras" />} />
+        <Route path="receita-federal/cno/vinculos" element={<CnoSearchPage key="vinculos" kind="vinculos" />} />
+        <Route path="receita-federal/cno/obras/:id" element={<CnoDetailPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>
     </Routes>

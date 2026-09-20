@@ -39,10 +39,10 @@ export function HomePage() {
             <span className="access-icon"><Icon><circle cx="9" cy="8" r="3" /><path d="M3 20v-2a6 6 0 0 1 12 0v2M16 5a3 3 0 0 1 0 6m2 3a5 5 0 0 1 3 4v2" /></Icon></span>
             <span className="access-copy"><small>RELAÇÕES SOCIETÁRIAS</small><strong>Sócios</strong><span>Encontre participações pelo nome do sócio e avance até as empresas relacionadas.</span></span><b aria-hidden="true">→</b>
           </Link>
-          <article className="access-card planned" aria-label="Obras, acesso em breve">
+          <Link className="access-card" to="/receita-federal/cno">
             <span className="access-icon"><Icon><path d="M5 21V9l7-5 7 5v12M9 21v-6h6v6M4 21h16" /></Icon></span>
-            <span className="access-copy"><small>PROJETOS E CONSTRUÇÕES</small><strong>Obras</strong><span>Uma futura visão para consultar obras e seus vínculos com o ambiente empresarial.</span></span><em>Em breve</em>
-          </article>
+            <span className="access-copy"><small>CADASTRO NACIONAL DE OBRAS</small><strong>Obras</strong><span>Pesquise ocorrências de obras, áreas, CNAEs e vínculos pelos identificadores oficiais.</span></span><b aria-hidden="true">→</b>
+          </Link>
         </div>
       </section>
       <aside className="principle-strip"><span aria-hidden="true">✓</span><div><strong>Informações conectadas</strong><p>Navegue entre empresas, estabelecimentos e pessoas sem perder o contexto de cada relação.</p></div></aside>

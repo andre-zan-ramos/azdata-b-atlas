@@ -8,6 +8,25 @@
   --line: #dce2db;
 }
 
+.cno-form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
+.cno-advanced, .cno-help { margin-top: 16px; }
+.cno-page summary { cursor: pointer; padding-block: 8px; font-weight: 600; }
+.cno-page summary:focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; }
+.cno-page .field-error { color: #9a3528; }
+.cno-page-controls { display: flex; justify-content: flex-end; margin-top: 12px; }
+.cno-page-controls select { width: auto; }
+.cno-result p { margin: 7px 0; font-size: 13px; }
+.cno-text { white-space: pre-wrap; overflow-wrap: anywhere; }
+.cno-collections { display: grid; gap: 12px; margin-top: 20px; }
+.cno-help { font-size: 13px; color: var(--muted); }
+.cno-results h3 { font-size: 15px; margin-top: 0; }
+@media (max-width: 600px) {
+  .cno-form-grid, .cno-page .detail-grid { grid-template-columns: 1fr; }
+  .cno-page .detail-card dl { grid-template-columns: 1fr; gap: 4px; }
+  .cno-page .detail-card dd { margin-bottom: 10px; }
+  .cno-page .pagination { gap: 8px; flex-wrap: wrap; }
+}
+
 * { box-sizing: border-box; }
 body { margin: 0; min-width: 320px; }
 a { color: var(--brand); text-underline-offset: 4px; }
