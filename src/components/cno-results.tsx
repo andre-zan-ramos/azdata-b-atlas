@@ -29,6 +29,16 @@ export function WorkResults({ items, returnTo }: { items: WorkSummary[]; returnT
     </div>
   </article>)}</div>
 }
+export function WorkTable({ items, returnTo }: { items: WorkSummary[]; returnTo: string }) {
+  return <div className="cno-table-scroll"><table className="cno-table"><thead><tr><th>CNO</th><th>Obra</th><th>Município / UF</th><th>Situação</th><th>Responsável</th></tr></thead><tbody>{items.map(item => <tr key={item.id}>
+    <td><Link to={`/receita-federal/cno/obras/${item.id}?return_to=${encodeURIComponent(returnTo)}`}>CNO {officialText(item.cno)}</Link><small>ID técnico: {item.id}</small></td>
+    <td className="cno-text">{officialText(item.nome)}<small>{officialText(item.nome_empresarial)}</small></td>
+    <td className="cno-text">{officialText(item.municipio)} / {officialText(item.uf)}</td>
+    <td className="cno-text">{officialText(item.situacao)}<small>{officialText(item.data_situacao)}</small></td>
+    <td className="cno-text">{officialText(item.ni_responsavel)}<small>{officialText(item.qualificacao_responsavel)}</small></td>
+  </tr>)}</tbody></table></div>
+}
+
 export function LinkResults({ items, returnTo }: { items: WorkLink[]; returnTo: string }) {
   return <div className="cards cno-results">{items.map(item => <article className="detail-card" key={item.id}>
     <h3>{item.cno !== null && item.cno !== '' ? <Link to={`/receita-federal/cno?cno=${encodeURIComponent(item.cno)}&return_to=${encodeURIComponent(returnTo)}`}>Pesquisar obras com CNO {item.cno}</Link> : `CNO: ${officialText(item.cno)}`}</h3>

@@ -7,7 +7,7 @@ import { tomByIbge } from '../api/ibge/tom-codes'
 import { cnoApi, cnoQueryOptions, filterKeys } from '../api/receita-federal/cno/client'
 import { adaptPage, readSearch } from '../api/receita-federal/cno/navigation'
 import type { Page, WorkLink, WorkSummary } from '../api/receita-federal/cno/types'
-import { fieldLabels, LinkResults, WorkResults } from '../components/cno-results'
+import { fieldLabels, LinkResults, WorkTable } from '../components/cno-results'
 import { Pagination } from '../components/pagination'
 import { Empty, QueryError } from '../components/query-state'
 import { internalReturnTo } from '../utils/navigation'
@@ -71,9 +71,18 @@ export function CnoSearchPage({ kind = 'obras' }: { kind?: 'obras' | 'vinculos' 
     if (applyNow) apply(false, { codigo_municipio: tom })
   }
 
+  const resultContent = <>
+    <div className="cno-page-controls"><label>Resultados por página<select aria-label="Resultados por página" aria-invalid={Boolean(errors.page_size)} aria-describedby={errors.page_size ? 'cno-size-error' : undefined} value={params.page_size} onChange={event => { const next = new URLSearchParams(search); next.set('page_size', event.target.value); next.set('page', '1'); setSearch(next) }}>{[10, 25, 50].map(size => <option key={size} value={size}>{size}</option>)}</select>{errors.page_size && <span id="cno-size-error" className="field-error">{errors.page_size.join(' ')}</span>}</label></div>
+    {!active && !invalid && <p className="inline-message">Informe um identificador ou use os filtros para pesquisar.</p>}
+    {query.isFetching && active && !invalid && <p role="status">Buscando…</p>}
+    {error && <QueryError error={error} retry={() => { if (!invalid) void query.refetch() }} />}
+    {active && view && <>{view.results.length === 0 ? <Empty /> : kind === 'obras' ? <WorkTable items={view.results as WorkSummary[]} returnTo={returnTo} /> : <LinkResults items={view.results as WorkLink[]} returnTo={returnTo} />}<Pagination page={view.page} pageSize={view.pageSize} count={view.count} previous={view.hasPrevious && view.page > 1} next={view.hasNext && view.page < 999999999} onPage={changePage} /></>}
+  </>
+
   return <section className="search-page cno-page">
     {search.has('return_to') && <Link className="back-link" to={internalReturnTo(search.get('return_to'), '/receita-federal/cno')}>Voltar à consulta anterior</Link>}
     <div className="page-heading"><h1>{kind === 'obras' ? 'Obras' : 'Vínculos de obras'}</h1><Link to={kind === 'obras' ? '/receita-federal/cno/vinculos' : '/receita-federal/cno'}>{kind === 'obras' ? 'Pesquisar vínculos' : 'Pesquisar obras'}</Link></div>
+    <div className={kind === 'obras' ? 'cno-explorer' : undefined}>
     <form className="filter-card" onSubmit={submit} role="search" aria-label={kind === 'obras' ? 'Pesquisa de obras' : 'Pesquisa de vínculos'}>
       {kind === 'obras' ? <>
         <div className="cno-primary-grid">
@@ -87,11 +96,8 @@ export function CnoSearchPage({ kind = 'obras' }: { kind?: 'obras' | 'vinculos' 
       </> : <div className="cno-form-grid">{field('cno')}{field('ni_responsavel')}</div>}
       <div className="form-actions"><button type="submit">Pesquisar</button>{!active && <button type="button" onClick={() => apply(true)}>Listar {kind === 'obras' ? 'obras' : 'vínculos'}</button>}</div>
     </form>
-    {kind === 'obras' && <section className="cno-map-card" aria-label="Explorar localidades no mapa"><div className="cno-map-heading"><div><h2>{draft.uf ? `Municípios de ${draft.uf}` : 'Explore o Brasil'}</h2><p>Clique em {draft.uf ? 'um município' : 'uma UF'} para filtrar as obras.</p></div>{draft.uf && <button type="button" onClick={() => { setDraft(current => ({ ...current, uf: '', codigo_municipio: '' })); setMunicipalitySearch(''); apply(false, { uf: '', codigo_municipio: '' }) }}>Voltar ao Brasil</button>}</div><Suspense fallback={<p role="status" className="cno-map-state">Carregando mapa…</p>}><TerritoryMap uf={draft.uf ?? ''} names={names} onState={selectState} onMunicipality={code => selectMunicipality(code, true)} /></Suspense><p className="cno-map-caption">A seleção no mapa atualiza a pesquisa. Os demais filtros continuam disponíveis acima.</p></section>}
-    <div className="cno-page-controls"><label>Resultados por página<select aria-label="Resultados por página" aria-invalid={Boolean(errors.page_size)} aria-describedby={errors.page_size ? 'cno-size-error' : undefined} value={params.page_size} onChange={event => { const next = new URLSearchParams(search); next.set('page_size', event.target.value); next.set('page', '1'); setSearch(next) }}>{[10, 25, 50].map(size => <option key={size} value={size}>{size}</option>)}</select>{errors.page_size && <span id="cno-size-error" className="field-error">{errors.page_size.join(' ')}</span>}</label></div>
-    {!active && !invalid && <p className="inline-message">Informe um identificador ou use os filtros para pesquisar.</p>}
-    {query.isFetching && active && !invalid && <p role="status">Buscando…</p>}
-    {error && <QueryError error={error} retry={() => { if (!invalid) void query.refetch() }} />}
-    {active && view && <>{view.results.length === 0 ? <Empty /> : kind === 'obras' ? <WorkResults items={view.results as WorkSummary[]} returnTo={returnTo} /> : <LinkResults items={view.results as WorkLink[]} returnTo={returnTo} />}<Pagination page={view.page} pageSize={view.pageSize} count={view.count} previous={view.hasPrevious && view.page > 1} next={view.hasNext && view.page < 999999999} onPage={changePage} /></>}
+    {kind === 'obras' && <section className="cno-map-card" aria-label="Explorar localidades no mapa"><div className="cno-map-heading"><div><h2>{draft.uf ? `Municípios de ${draft.uf}` : 'Explore o Brasil'}</h2><p>Clique em {draft.uf ? 'um município' : 'uma UF'} para filtrar as obras.</p></div>{draft.uf && <button type="button" onClick={() => { setDraft(current => ({ ...current, uf: '', codigo_municipio: '' })); setMunicipalitySearch(''); apply(false, { uf: '', codigo_municipio: '' }) }}>Voltar ao Brasil</button>}</div><Suspense fallback={<p role="status" className="cno-map-state">Carregando mapa…</p>}><TerritoryMap uf={draft.uf ?? ''} names={names} onState={selectState} onMunicipality={code => selectMunicipality(code, true)} /></Suspense><p className="cno-map-caption">A seleção no mapa atualiza a pesquisa. Os demais filtros estão na coluna à esquerda.</p></section>}
+    {kind === 'obras' ? <details className="cno-results-panel cno-results-disclosure"><summary>Resultados da pesquisa{view ? ` (${view.results.length} nesta página)` : ''}</summary>{resultContent}</details> : resultContent}
+    </div>
   </section>
 }
