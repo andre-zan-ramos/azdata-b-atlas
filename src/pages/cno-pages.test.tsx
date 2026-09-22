@@ -3,12 +3,20 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes, useLocation, useNavigate } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { cnoApi } from '../api/receita-federal/cno/client'
+import { listMunicipalities, listStates } from '../api/ibge/territories'
 import { ApiError } from '../api/errors'
 import type { Page, WorkSummary } from '../api/receita-federal/cno/types'
 import { Providers } from '../app/providers'
 import { area, detail, fastPage, link, work } from '../test/cno-fixtures'
 import { CnoSearchPage } from './cno-search-page'
 import { CnoDetailPage } from './cno-detail-page'
+
+vi.mock('../api/ibge/territories', () => ({
+  listStates: vi.fn().mockResolvedValue([{ id: 31, sigla: 'MG', nome: 'Minas Gerais' }]),
+  listMunicipalities: vi.fn().mockResolvedValue([{ id: 3106200, nome: 'Belo Horizonte' }]),
+  getMesh: vi.fn().mockResolvedValue({ type: 'FeatureCollection', features: [] }),
+}))
+vi.mock('../components/cno-territory-map', () => ({ CnoTerritoryMap: ({ uf, onState, onMunicipality }: { uf: string; onState: (code: string) => void; onMunicipality: (code: string) => void }) => <div data-testid="territory-map"><button type="button" onClick={() => onState('31')}>Mapa MG</button>{uf && <button type="button" onClick={() => onMunicipality('3106200')}>Mapa Belo Horizonte</button>}</div> }))
 
 vi.mock('../api/receita-federal/cno/client', async importOriginal => ({ ...await importOriginal<typeof import('../api/receita-federal/cno/client')>(), cnoApi: { obras: vi.fn(), obra: vi.fn(), areas: vi.fn(), cnaes: vi.fn(), vinculos: vi.fn() } }))
 const api = vi.mocked(cnoApi)
@@ -32,6 +40,8 @@ async function openCollection(title: string) {
 }
 beforeEach(() => {
   vi.resetAllMocks()
+  vi.mocked(listStates).mockResolvedValue([{ id: 31, sigla: 'MG', nome: 'Minas Gerais' }])
+  vi.mocked(listMunicipalities).mockResolvedValue([{ id: 3106200, nome: 'Belo Horizonte' }])
   api.obras.mockResolvedValue(fastPage([work, { ...work, id: 43 }], 1, true))
   api.obra.mockResolvedValue(detail)
   api.areas.mockResolvedValue(fastPage([{ ...area, id: 11 }], 2))
@@ -40,6 +50,35 @@ beforeEach(() => {
 })
 
 describe('pesquisas CNO', () => {
+  it('seleciona UF e município por nome e envia os códigos oficiais', async () => {
+    const user = userEvent.setup(); renderPage()
+    await screen.findByRole('option', { name: 'MG · Minas Gerais' })
+    await user.selectOptions(screen.getByRole('combobox', { name: 'UF' }), 'MG')
+    const municipality = await screen.findByRole('combobox', { name: 'Município' })
+    await waitFor(() => expect(municipality).toBeEnabled())
+    await user.type(municipality, 'belo')
+    await user.click(screen.getByRole('option', { name: 'Belo Horizonte' }))
+    await user.click(screen.getByRole('button', { name: 'Pesquisar' }))
+    await waitFor(() => expect(api.obras).toHaveBeenCalledWith({ uf: 'MG', codigo_municipio: '4123', page: 1, page_size: 10 }, expect.any(AbortSignal)))
+  })
+  it('clique no mapa aplica UF e município à pesquisa', async () => {
+    const user = userEvent.setup(); renderPage()
+    await screen.findByRole('option', { name: 'MG · Minas Gerais' })
+    await user.click(screen.getByRole('button', { name: 'Mapa MG' }))
+    await waitFor(() => expect(api.obras).toHaveBeenCalledWith({ uf: 'MG', page: 1, page_size: 10 }, expect.any(AbortSignal)))
+    await waitFor(() => expect(screen.getByRole('combobox', { name: 'Município' })).toBeEnabled())
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Mapa Belo Horizonte' })).toBeInTheDocument())
+    await user.click(screen.getByRole('button', { name: 'Mapa Belo Horizonte' }))
+    await waitFor(() => expect(api.obras).toHaveBeenLastCalledWith({ uf: 'MG', codigo_municipio: '4123', page: 1, page_size: 10 }, expect.any(AbortSignal)))
+  })
+  it('mapa filtra município mesmo com a lista da UF ainda carregando', async () => {
+    vi.mocked(listMunicipalities).mockImplementation(() => new Promise(() => {}))
+    const user = userEvent.setup(); renderPage()
+    await screen.findByRole('option', { name: 'MG · Minas Gerais' })
+    await user.click(screen.getByRole('button', { name: 'Mapa MG' }))
+    await user.click(await screen.findByRole('button', { name: 'Mapa Belo Horizonte' }))
+    await waitFor(() => expect(api.obras).toHaveBeenLastCalledWith({ uf: 'MG', codigo_municipio: '4123', page: 1, page_size: 10 }, expect.any(AbortSignal)))
+  })
   it('não consulta na entrada nem por tecla; preserva texto e ocorrências repetidas', async () => {
     const user = userEvent.setup(); renderPage()
     expect(api.obras).not.toHaveBeenCalled()
@@ -63,7 +102,7 @@ describe('pesquisas CNO', () => {
   it('reseta página ao aplicar filtros/tamanho e restaura histórico', async () => {
     const user = userEvent.setup(); renderPage('/receita-federal/cno?cno=001&page=4&page_size=25')
     await screen.findByText('ID técnico: 41')
-    await user.selectOptions(screen.getByRole('combobox'), '50')
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Resultados por página' }), '50')
     await waitFor(() => expect(api.obras).toHaveBeenLastCalledWith({ cno: '001', page: 1, page_size: 50 }, expect.any(AbortSignal)))
     await user.clear(screen.getByRole('textbox', { name: 'CNO' })); await user.type(screen.getByRole('textbox', { name: 'CNO' }), '002{Enter}')
     await waitFor(() => expect(api.obras).toHaveBeenLastCalledWith({ cno: '002', page: 1, page_size: 50 }, expect.any(AbortSignal)))
@@ -92,7 +131,7 @@ describe('pesquisas CNO', () => {
     const view = renderPage('/receita-federal/cno?cno=001')
     await waitFor(() => expect(screen.getByRole('textbox', { name: 'CNO' })).toHaveAttribute('aria-invalid', 'true'))
     view.unmount(); api.obras.mockClear(); renderPage('/receita-federal/cno?cno=001&page_size=20')
-    expect(screen.getByRole('combobox')).toHaveAttribute('aria-invalid', 'true'); expect(api.obras).not.toHaveBeenCalled()
+    expect(screen.getByRole('combobox', { name: 'Resultados por página' })).toHaveAttribute('aria-invalid', 'true'); expect(api.obras).not.toHaveBeenCalled()
   })
   it.each(['timeout', 'network_error'])('falha %s só repete manualmente', async code => {
     api.obras.mockRejectedValueOnce(new ApiError('Falha de conexão.', undefined, code)).mockResolvedValue(fastPage())
