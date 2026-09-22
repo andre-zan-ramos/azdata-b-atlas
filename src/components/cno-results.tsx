@@ -9,6 +9,7 @@ export const fieldLabels: Record<string, string> = {
   situacao: 'Situação', data_situacao: 'Data da situação', tipo_logradouro: 'Tipo de logradouro', logradouro: 'Logradouro', numero: 'Número',
   bairro: 'Bairro', complemento: 'Complemento', cep: 'CEP', codigo_pais: 'Código do país', pais: 'País',
   data_inicio_obra: 'Início da obra', data_inicio_responsabilidade: 'Início da responsabilidade', data_registro: 'Data de registro',
+  data_inicio_obra_de: 'Início da obra — de', data_inicio_obra_ate: 'Início da obra — até',
   cno_vinculado: 'CNO vinculado', caixa_postal: 'Caixa postal', unidade_medida: 'Unidade de medida', area_total: 'Área total',
   codigo_localizacao: 'Código de localização', categoria: 'Categoria', destinacao: 'Destinação', tipo_construcao: 'Tipo de construção',
   tipo_area: 'Tipo de área', tipo_area_complementar: 'Tipo de área complementar', metragem: 'Metragem', cnae: 'CNAE',
@@ -30,9 +31,10 @@ export function WorkResults({ items, returnTo }: { items: WorkSummary[]; returnT
   </article>)}</div>
 }
 export function WorkTable({ items, returnTo }: { items: WorkSummary[]; returnTo: string }) {
-  return <div className="cno-table-scroll"><table className="cno-table"><thead><tr><th>CNO</th><th>Obra</th><th>Município / UF</th><th>Situação</th><th>Responsável</th></tr></thead><tbody>{items.map(item => <tr key={item.id}>
+  return <div className="cno-table-scroll"><table className="cno-table"><thead><tr><th>CNO</th><th>Obra</th><th>Início da obra</th><th>Município / UF</th><th>Situação</th><th>Responsável</th></tr></thead><tbody>{items.map(item => <tr key={item.id}>
     <td><Link to={`/receita-federal/cno/obras/${item.id}?return_to=${encodeURIComponent(returnTo)}`}>CNO {officialText(item.cno)}</Link><small>ID técnico: {item.id}</small></td>
     <td className="cno-text">{officialText(item.nome)}<small>{officialText(item.nome_empresarial)}</small></td>
+    <td className="cno-text">{officialText(item.data_inicio_obra)}</td>
     <td className="cno-text">{officialText(item.municipio)} / {officialText(item.uf)}</td>
     <td className="cno-text">{officialText(item.situacao)}<small>{officialText(item.data_situacao)}</small></td>
     <td className="cno-text">{officialText(item.ni_responsavel)}<small>{officialText(item.qualificacao_responsavel)}</small></td>

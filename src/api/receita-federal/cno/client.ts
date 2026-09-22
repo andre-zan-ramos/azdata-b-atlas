@@ -1,11 +1,11 @@
 import type { AxiosInstance } from 'axios'
 import { apiClient } from '../../client'
 import { ApiError } from '../../errors'
-import type { Area, Cnae, LinkFilters, Page, PaginationParams, WorkDetail, WorkFilters, WorkLink, WorkSummary } from './types'
+import type { Area, Cnae, CnoMunicipality, LinkFilters, MunicipalityFilters, Page, PaginationParams, WorkDetail, WorkFilters, WorkLink, WorkSummary } from './types'
 
 export const filterKeys = {
-  obras: ['cno', 'ni_responsavel', 'uf', 'codigo_municipio', 'situacao', 'cnae', 'cno_vinculado'],
-  areas: ['cno'], cnaes: ['cno', 'cnae'], vinculos: ['cno', 'ni_responsavel'],
+  obras: ['cno', 'ni_responsavel', 'uf', 'codigo_municipio', 'situacao', 'cnae', 'cno_vinculado', 'data_inicio_obra_de', 'data_inicio_obra_ate'],
+  areas: ['cno'], cnaes: ['cno', 'cnae'], vinculos: ['cno', 'ni_responsavel'], municipios: ['uf', 'nome'],
 } as const
 export type Endpoint = keyof typeof filterKeys
 export function serializeParams(endpoint: Endpoint, params: object) {
@@ -30,6 +30,7 @@ export function createCnoApi(client: AxiosInstance = apiClient) {
     areas: (params: PaginationParams & { cno?: string }, signal?: AbortSignal) => list<Area>('areas', params, signal),
     cnaes: (params: PaginationParams & { cno?: string; cnae?: string }, signal?: AbortSignal) => list<Cnae>('cnaes', params, signal),
     vinculos: (params: LinkFilters, signal?: AbortSignal) => list<WorkLink>('vinculos', params, signal),
+    municipios: (params: MunicipalityFilters, signal?: AbortSignal) => list<CnoMunicipality>('municipios', params, signal),
     obra: async (id: string, signal?: AbortSignal) => {
       if (!/^[0-9]+$/.test(id)) throw new ApiError('Ocorrência não disponível.', 404)
       return (await client.get<WorkDetail>(`api/v1/receita-federal/cno/obras/${id}/`, { signal })).data

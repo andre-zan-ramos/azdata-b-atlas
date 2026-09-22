@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes, useLocation, useNavigate } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { cnoApi } from '../api/receita-federal/cno/client'
-import { listMunicipalities, listStates } from '../api/ibge/territories'
+import { listStates } from '../api/ibge/territories'
 import { ApiError } from '../api/errors'
 import type { Page, WorkSummary } from '../api/receita-federal/cno/types'
 import { Providers } from '../app/providers'
@@ -13,12 +13,11 @@ import { CnoDetailPage } from './cno-detail-page'
 
 vi.mock('../api/ibge/territories', () => ({
   listStates: vi.fn().mockResolvedValue([{ id: 31, sigla: 'MG', nome: 'Minas Gerais' }]),
-  listMunicipalities: vi.fn().mockResolvedValue([{ id: 3106200, nome: 'Belo Horizonte' }]),
   getMesh: vi.fn().mockResolvedValue({ type: 'FeatureCollection', features: [] }),
 }))
 vi.mock('../components/cno-territory-map', () => ({ CnoTerritoryMap: ({ uf, onState, onMunicipality }: { uf: string; onState: (code: string) => void; onMunicipality: (code: string) => void }) => <div data-testid="territory-map"><button type="button" onClick={() => onState('31')}>Mapa MG</button>{uf && <button type="button" onClick={() => onMunicipality('3106200')}>Mapa Belo Horizonte</button>}</div> }))
 
-vi.mock('../api/receita-federal/cno/client', async importOriginal => ({ ...await importOriginal<typeof import('../api/receita-federal/cno/client')>(), cnoApi: { obras: vi.fn(), obra: vi.fn(), areas: vi.fn(), cnaes: vi.fn(), vinculos: vi.fn() } }))
+vi.mock('../api/receita-federal/cno/client', async importOriginal => ({ ...await importOriginal<typeof import('../api/receita-federal/cno/client')>(), cnoApi: { obras: vi.fn(), obra: vi.fn(), areas: vi.fn(), cnaes: vi.fn(), vinculos: vi.fn(), municipios: vi.fn() } }))
 const api = vi.mocked(cnoApi)
 function Location() {
   const location = useLocation(), navigate = useNavigate()
@@ -41,7 +40,7 @@ async function openCollection(title: string) {
 beforeEach(() => {
   vi.resetAllMocks()
   vi.mocked(listStates).mockResolvedValue([{ id: 31, sigla: 'MG', nome: 'Minas Gerais' }])
-  vi.mocked(listMunicipalities).mockResolvedValue([{ id: 3106200, nome: 'Belo Horizonte' }])
+  api.municipios.mockResolvedValue(fastPage([{ nome: 'Belo Horizonte', uf: 'MG', codigo_tom: '4123', codigo_ibge: '3106200' }]))
   api.obras.mockResolvedValue(fastPage([work, { ...work, id: 43 }], 1, true))
   api.obra.mockResolvedValue(detail)
   api.areas.mockResolvedValue(fastPage([{ ...area, id: 11 }], 2))
@@ -71,13 +70,12 @@ describe('pesquisas CNO', () => {
     await user.click(screen.getByRole('button', { name: 'Mapa Belo Horizonte' }))
     await waitFor(() => expect(api.obras).toHaveBeenLastCalledWith({ uf: 'MG', codigo_municipio: '4123', page: 1, page_size: 10 }, expect.any(AbortSignal)))
   })
-  it('mapa filtra município mesmo com a lista da UF ainda carregando', async () => {
-    vi.mocked(listMunicipalities).mockImplementation(() => new Promise(() => {}))
+  it('carrega o domínio municipal CNO por UF sem solicitar contagem', async () => {
     const user = userEvent.setup(); renderPage()
     await screen.findByRole('option', { name: 'MG · Minas Gerais' })
-    await user.click(screen.getByRole('button', { name: 'Mapa MG' }))
-    await user.click(await screen.findByRole('button', { name: 'Mapa Belo Horizonte' }))
-    await waitFor(() => expect(api.obras).toHaveBeenLastCalledWith({ uf: 'MG', codigo_municipio: '4123', page: 1, page_size: 10 }, expect.any(AbortSignal)))
+    await user.selectOptions(screen.getByRole('combobox', { name: 'UF' }), 'MG')
+    await waitFor(() => expect(api.municipios).toHaveBeenCalledWith({ uf: 'MG', page: 1, page_size: 50 }, expect.any(AbortSignal)))
+    expect(api.municipios.mock.calls[0][0]).not.toHaveProperty('include_total')
   })
   it('não consulta na entrada nem por tecla; preserva texto e ocorrências repetidas', async () => {
     const user = userEvent.setup(); renderPage()
@@ -98,6 +96,14 @@ describe('pesquisas CNO', () => {
     await screen.findAllByText('ID técnico: 41')
     expect(api.obras).toHaveBeenCalledExactlyOnceWith({ page: 1, page_size: 10 }, expect.any(AbortSignal))
     expect(screen.getByTestId('location')).toHaveTextContent('listar=true')
+  })
+  it('aplica limites inclusivos de início da obra como datas canônicas', async () => {
+    const user = userEvent.setup(); renderPage()
+    await user.type(screen.getByLabelText('Início da obra — de'), '2024-02-29')
+    await user.type(screen.getByLabelText('Início da obra — até'), '2024-03-01')
+    await user.click(screen.getByRole('button', { name: 'Pesquisar' }))
+    await waitFor(() => expect(api.obras).toHaveBeenCalledWith({ data_inicio_obra_de: '2024-02-29', data_inicio_obra_ate: '2024-03-01', page: 1, page_size: 10 }, expect.any(AbortSignal)))
+    expect(screen.getAllByText('2020-01-02').length).toBeGreaterThan(0)
   })
   it('reseta página ao aplicar filtros/tamanho e restaura histórico', async () => {
     const user = userEvent.setup(); renderPage('/receita-federal/cno?cno=001&page=4&page_size=25')
@@ -132,6 +138,13 @@ describe('pesquisas CNO', () => {
     await waitFor(() => expect(screen.getByRole('textbox', { name: 'CNO' })).toHaveAttribute('aria-invalid', 'true'))
     view.unmount(); api.obras.mockClear(); renderPage('/receita-federal/cno?cno=001&page_size=20')
     expect(screen.getByRole('combobox', { name: 'Resultados por página' })).toHaveAttribute('aria-invalid', 'true'); expect(api.obras).not.toHaveBeenCalled()
+  })
+  it('mostra erro 400 no campo de data indicado pela API', async () => {
+    api.obras.mockRejectedValue(new ApiError('Revise.', 400, undefined, { data_inicio_obra_ate: ['Deve ser maior ou igual à data inicial.'] }))
+    renderPage('/receita-federal/cno?data_inicio_obra_de=2024-03-02&data_inicio_obra_ate=2024-03-01')
+    const field = await screen.findByLabelText('Início da obra — até')
+    await waitFor(() => expect(field).toHaveAttribute('aria-invalid', 'true'))
+    expect(screen.getAllByText('Deve ser maior ou igual à data inicial.')).toHaveLength(2)
   })
   it.each(['timeout', 'network_error'])('falha %s só repete manualmente', async code => {
     api.obras.mockRejectedValueOnce(new ApiError('Falha de conexão.', undefined, code)).mockResolvedValue(fastPage())

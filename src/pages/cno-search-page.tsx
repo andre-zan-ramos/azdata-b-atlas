@@ -2,17 +2,26 @@ import { useQuery } from '@tanstack/react-query'
 import { lazy, Suspense, useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link, useLocation, useSearchParams } from 'react-router'
 import { ApiError } from '../api/errors'
-import { listMunicipalities, listStates } from '../api/ibge/territories'
-import { tomByIbge } from '../api/ibge/tom-codes'
+import { listStates } from '../api/ibge/territories'
 import { cnoApi, cnoQueryOptions, filterKeys } from '../api/receita-federal/cno/client'
 import { adaptPage, readSearch } from '../api/receita-federal/cno/navigation'
-import type { Page, WorkLink, WorkSummary } from '../api/receita-federal/cno/types'
+import type { CnoMunicipality, Page, WorkLink, WorkSummary } from '../api/receita-federal/cno/types'
 import { fieldLabels, LinkResults, WorkTable } from '../components/cno-results'
 import { Pagination } from '../components/pagination'
 import { Empty, QueryError } from '../components/query-state'
 import { internalReturnTo } from '../utils/navigation'
 
 const TerritoryMap = lazy(() => import('../components/cno-territory-map').then(module => ({ default: module.CnoTerritoryMap })))
+
+async function listCnoMunicipalities(uf: string, signal?: AbortSignal) {
+  const results: CnoMunicipality[] = []
+  for (let page = 1; ; page += 1) {
+    const response = await cnoApi.municipios({ uf, page, page_size: 50 }, signal)
+    results.push(...response.results)
+    const hasNext = 'has_next' in response ? response.has_next : Boolean(response.next)
+    if (!hasNext) return results
+  }
+}
 
 export function CnoSearchPage({ kind = 'obras' }: { kind?: 'obras' | 'vinculos' }) {
   const [search, setSearch] = useSearchParams()
@@ -23,10 +32,10 @@ export function CnoSearchPage({ kind = 'obras' }: { kind?: 'obras' | 'vinculos' 
   const [municipalityOpen, setMunicipalityOpen] = useState(false)
   const [activeMunicipality, setActiveMunicipality] = useState(0)
   const states = useQuery({ queryKey: ['ibge', 'states'], queryFn: ({ signal }) => listStates(signal), staleTime: 86400000, retry: false, enabled: kind === 'obras' })
-  const municipalities = useQuery({ queryKey: ['ibge', 'municipalities', draft.uf], queryFn: ({ signal }) => listMunicipalities(draft.uf, signal), staleTime: 86400000, retry: false, enabled: kind === 'obras' && Boolean(draft.uf) })
-  const names = useMemo(() => new Map((draft.uf ? municipalities.data ?? [] : states.data ?? []).map(item => [String(item.id), item.nome])), [draft.uf, municipalities.data, states.data])
-  const selectedMunicipality = draft.codigo_municipio ? municipalities.data?.find(item => tomByIbge[String(item.id)] === draft.codigo_municipio) : undefined
-  const municipalityOptions = (municipalities.data ?? []).filter(item => tomByIbge[String(item.id)] && item.nome.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().includes(municipalitySearch.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase())).slice(0, 30)
+  const municipalities = useQuery({ queryKey: ['cno', 'municipalities', draft.uf], queryFn: ({ signal }) => listCnoMunicipalities(draft.uf, signal), staleTime: 86400000, retry: false, enabled: kind === 'obras' && Boolean(draft.uf) })
+  const names = useMemo(() => new Map((draft.uf ? municipalities.data ?? [] : states.data ?? []).flatMap(item => 'codigo_ibge' in item ? item.codigo_ibge === null ? [] : [[item.codigo_ibge, item.nome] as const] : [[String(item.id), item.nome] as const])), [draft.uf, municipalities.data, states.data])
+  const selectedMunicipality = draft.codigo_municipio ? municipalities.data?.find(item => item.codigo_tom === draft.codigo_municipio) : undefined
+  const municipalityOptions = (municipalities.data ?? []).filter(item => item.nome.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().includes(municipalitySearch.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase())).slice(0, 30)
   const applied = JSON.stringify(filters)
   useEffect(() => { setDraft(JSON.parse(applied) as Record<string, string>) }, [applied])
   useEffect(() => { if (draft.codigo_municipio && selectedMunicipality) setMunicipalitySearch(selectedMunicipality.nome) }, [selectedMunicipality, draft.codigo_municipio])
@@ -54,7 +63,7 @@ export function CnoSearchPage({ kind = 'obras' }: { kind?: 'obras' | 'vinculos' 
   }
   const submit = (event: FormEvent) => { event.preventDefault(); apply() }
   const changePage = (page: number) => { const next = new URLSearchParams(search); next.set('page', String(page)); setSearch(next) }
-  const field = (key: string) => <label key={key} htmlFor={`cno-${key}`}>{fieldLabels[key]}<input id={`cno-${key}`} name={key} type="text" aria-label={fieldLabels[key]} value={draft[key] ?? ''} onChange={event => setDraft(current => ({ ...current, [key]: event.target.value }))} aria-invalid={Boolean(errors[key])} aria-describedby={errors[key] ? `cno-${key}-error` : undefined} />{errors[key] && <span className="field-error" id={`cno-${key}-error`}>{errors[key].join(' ')}</span>}</label>
+  const field = (key: string, type = 'text') => <label key={key} htmlFor={`cno-${key}`}>{fieldLabels[key]}<input id={`cno-${key}`} name={key} type={type} aria-label={fieldLabels[key]} value={draft[key] ?? ''} onChange={event => setDraft(current => ({ ...current, [key]: event.target.value }))} aria-invalid={Boolean(errors[key])} aria-describedby={errors[key] ? `cno-${key}-error` : undefined} />{errors[key] && <span className="field-error" id={`cno-${key}-error`}>{errors[key].join(' ')}</span>}</label>
   const selectState = (code: string) => {
     const state = states.data?.find(item => String(item.id) === code || item.sigla === code)
     if (!state?.sigla) return
@@ -63,12 +72,12 @@ export function CnoSearchPage({ kind = 'obras' }: { kind?: 'obras' | 'vinculos' 
     apply(false, { uf: state.sigla, codigo_municipio: '' })
   }
   const selectMunicipality = (code: string, applyNow = false) => {
-    const tom = tomByIbge[code]
-    if (!tom) return
-    setDraft(current => ({ ...current, codigo_municipio: tom }))
-    setMunicipalitySearch(municipalities.data?.find(item => String(item.id) === code)?.nome ?? '')
+    const municipality = municipalities.data?.find(item => item.codigo_ibge === code)
+    if (!municipality) return
+    setDraft(current => ({ ...current, codigo_municipio: municipality.codigo_tom }))
+    setMunicipalitySearch(municipality.nome)
     setMunicipalityOpen(false)
-    if (applyNow) apply(false, { codigo_municipio: tom })
+    if (applyNow) apply(false, { codigo_municipio: municipality.codigo_tom })
   }
 
   const resultContent = <>
@@ -87,12 +96,13 @@ export function CnoSearchPage({ kind = 'obras' }: { kind?: 'obras' | 'vinculos' 
       {kind === 'obras' ? <>
         <div className="cno-primary-grid">
           <label>UF<select aria-label="UF" value={draft.uf ?? ''} onChange={event => { setDraft(current => ({ ...current, uf: event.target.value, codigo_municipio: '' })); setMunicipalitySearch('') }}><option value="">Todo o Brasil</option>{[...(states.data ?? [])].sort((a, b) => (a.sigla ?? '').localeCompare(b.sigla ?? '')).map(state => <option key={state.id} value={state.sigla}>{state.sigla} · {state.nome}</option>)}</select></label>
-          <div className="cno-municipality-field"><label htmlFor="cno-municipality">Município</label><input id="cno-municipality" role="combobox" aria-autocomplete="list" aria-expanded={municipalityOpen} aria-controls="cno-municipalities" aria-activedescendant={municipalityOpen && municipalityOptions[activeMunicipality] ? `cno-municipality-${municipalityOptions[activeMunicipality].id}` : undefined} disabled={!draft.uf || municipalities.isPending || municipalities.isError} placeholder={!draft.uf ? 'Selecione uma UF' : municipalities.isPending ? 'Carregando municípios…' : 'Buscar município…'} value={municipalitySearch} onFocus={() => setMunicipalityOpen(true)} onChange={event => { setMunicipalitySearch(event.target.value); setDraft(current => ({ ...current, codigo_municipio: '' })); setMunicipalityOpen(true); setActiveMunicipality(0) }} onKeyDown={event => { if (event.key === 'Escape') setMunicipalityOpen(false); else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') { event.preventDefault(); setMunicipalityOpen(true); setActiveMunicipality(current => municipalityOptions.length ? (current + (event.key === 'ArrowDown' ? 1 : -1) + municipalityOptions.length) % municipalityOptions.length : 0) } else if (event.key === 'Enter' && municipalityOpen && municipalityOptions[activeMunicipality]) { event.preventDefault(); selectMunicipality(String(municipalityOptions[activeMunicipality].id)) } }} />{municipalityOpen && draft.uf && <div className="cno-municipality-options" id="cno-municipalities" role="listbox">{municipalityOptions.map((item, index) => <button id={`cno-municipality-${item.id}`} key={item.id} role="option" aria-selected={tomByIbge[String(item.id)] === draft.codigo_municipio} data-active={index === activeMunicipality} tabIndex={-1} type="button" onMouseEnter={() => setActiveMunicipality(index)} onClick={() => selectMunicipality(String(item.id))}>{item.nome}</button>)}{!municipalityOptions.length && <span>Nenhum município encontrado.</span>}</div>}{draft.codigo_municipio && <small>Código TOM {draft.codigo_municipio}</small>}</div>
+          <div className="cno-municipality-field"><label htmlFor="cno-municipality">Município</label><input id="cno-municipality" role="combobox" aria-autocomplete="list" aria-expanded={municipalityOpen} aria-controls="cno-municipalities" aria-activedescendant={municipalityOpen && municipalityOptions[activeMunicipality] ? `cno-municipality-${municipalityOptions[activeMunicipality].codigo_tom}` : undefined} disabled={!draft.uf || municipalities.isPending || municipalities.isError} placeholder={!draft.uf ? 'Selecione uma UF' : municipalities.isPending ? 'Carregando municípios…' : 'Buscar município…'} value={municipalitySearch} onFocus={() => setMunicipalityOpen(true)} onChange={event => { setMunicipalitySearch(event.target.value); setDraft(current => ({ ...current, codigo_municipio: '' })); setMunicipalityOpen(true); setActiveMunicipality(0) }} onKeyDown={event => { if (event.key === 'Escape') setMunicipalityOpen(false); else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') { event.preventDefault(); setMunicipalityOpen(true); setActiveMunicipality(current => municipalityOptions.length ? (current + (event.key === 'ArrowDown' ? 1 : -1) + municipalityOptions.length) % municipalityOptions.length : 0) } else if (event.key === 'Enter' && municipalityOpen && municipalityOptions[activeMunicipality]) { event.preventDefault(); selectMunicipality(municipalityOptions[activeMunicipality].codigo_ibge ?? '') } }} />{municipalityOpen && draft.uf && <div className="cno-municipality-options" id="cno-municipalities" role="listbox">{municipalityOptions.map((item, index) => <button id={`cno-municipality-${item.codigo_tom}`} key={`${item.uf}:${item.codigo_tom}`} role="option" aria-selected={item.codigo_tom === draft.codigo_municipio} data-active={index === activeMunicipality} tabIndex={-1} type="button" onMouseEnter={() => setActiveMunicipality(index)} onClick={() => { setDraft(current => ({ ...current, codigo_municipio: item.codigo_tom })); setMunicipalitySearch(item.nome); setMunicipalityOpen(false) }}>{item.nome}</button>)}{!municipalityOptions.length && <span>Nenhum município encontrado.</span>}</div>}{draft.codigo_municipio && <small>Código TOM {draft.codigo_municipio}</small>}</div>
         </div>
         {states.isError && <p role="alert" className="cno-filter-note">Não foi possível carregar as UFs. <button type="button" onClick={() => void states.refetch()}>Tentar novamente</button></p>}
         {municipalities.isError && <p role="alert" className="cno-filter-note">Não foi possível carregar os municípios de {draft.uf}. <button type="button" onClick={() => void municipalities.refetch()}>Tentar novamente</button></p>}
         <p className="cno-filter-note">Selecione uma localidade ou clique no mapa para explorar as obras.</p>
-        <details className="cno-advanced" open={['cno', 'ni_responsavel', 'situacao', 'cnae', 'cno_vinculado'].some(key => Boolean(filters[key]) || Boolean(errors[key])) || undefined}><summary>Identificadores e outros filtros</summary><div className="cno-form-grid">{['cno', 'ni_responsavel', 'situacao', 'cnae', 'cno_vinculado'].map(field)}</div></details>
+        <div className="cno-form-grid">{field('data_inicio_obra_de', 'date')}{field('data_inicio_obra_ate', 'date')}</div>
+        <details className="cno-advanced" open={['cno', 'ni_responsavel', 'situacao', 'cnae', 'cno_vinculado'].some(key => Boolean(filters[key]) || Boolean(errors[key])) || undefined}><summary>Identificadores e outros filtros</summary><div className="cno-form-grid">{['cno', 'ni_responsavel', 'situacao', 'cnae', 'cno_vinculado'].map(key => field(key))}</div></details>
       </> : <div className="cno-form-grid">{field('cno')}{field('ni_responsavel')}</div>}
       <div className="form-actions"><button type="submit">Pesquisar</button>{!active && <button type="button" onClick={() => apply(true)}>Listar {kind === 'obras' ? 'obras' : 'vínculos'}</button>}</div>
     </form>
