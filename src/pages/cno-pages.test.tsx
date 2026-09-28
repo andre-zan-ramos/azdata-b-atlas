@@ -15,9 +15,9 @@ vi.mock('../api/ibge/territories', () => ({
   listStates: vi.fn().mockResolvedValue([{ id: 31, sigla: 'MG', nome: 'Minas Gerais' }]),
   getMesh: vi.fn().mockResolvedValue({ type: 'FeatureCollection', features: [] }),
 }))
-vi.mock('../components/cno-territory-map', () => ({ CnoTerritoryMap: ({ uf, onState, onMunicipality }: { uf: string; onState: (code: string) => void; onMunicipality: (code: string) => void }) => <div data-testid="territory-map"><button type="button" onClick={() => onState('31')}>Mapa MG</button>{uf && <button type="button" onClick={() => onMunicipality('3106200')}>Mapa Belo Horizonte</button>}</div> }))
+vi.mock('../components/cno-territory-map', () => ({ CnoTerritoryMap: ({ uf, onState, onMunicipality, selectedMunicipalityIbge, works }: { uf: string; onState: (code: string) => void; onMunicipality: (code: string) => void; selectedMunicipalityIbge: string | null; works: WorkSummary[] }) => <div data-testid="territory-map" data-selected={selectedMunicipalityIbge ?? ''} data-points={works.filter(item => item.geolocation?.status === 'available').length}><button type="button" onClick={() => onState('31')}>Mapa MG</button>{uf && <button type="button" onClick={() => onMunicipality('3106200')}>Mapa Belo Horizonte</button>}</div> }))
 
-vi.mock('../api/receita-federal/cno/client', async importOriginal => ({ ...await importOriginal<typeof import('../api/receita-federal/cno/client')>(), cnoApi: { obras: vi.fn(), obra: vi.fn(), areas: vi.fn(), cnaes: vi.fn(), vinculos: vi.fn(), municipios: vi.fn() } }))
+vi.mock('../api/receita-federal/cno/client', async importOriginal => ({ ...await importOriginal<typeof import('../api/receita-federal/cno/client')>(), cnoApi: { obras: vi.fn(), obra: vi.fn(), areas: vi.fn(), cnaes: vi.fn(), vinculos: vi.fn(), municipios: vi.fn(), requestWorkGeolocations: vi.fn() } }))
 const api = vi.mocked(cnoApi)
 function Location() {
   const location = useLocation(), navigate = useNavigate()
@@ -46,6 +46,7 @@ beforeEach(() => {
   api.areas.mockResolvedValue(fastPage([{ ...area, id: 11 }], 2))
   api.cnaes.mockResolvedValue(fastPage([], 2))
   api.vinculos.mockResolvedValue(fastPage([link]))
+  api.requestWorkGeolocations.mockResolvedValue({ results: [] })
 })
 
 describe('pesquisas CNO', () => {
@@ -69,6 +70,22 @@ describe('pesquisas CNO', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Mapa Belo Horizonte' })).toBeInTheDocument())
     await user.click(screen.getByRole('button', { name: 'Mapa Belo Horizonte' }))
     await waitFor(() => expect(api.obras).toHaveBeenLastCalledWith({ uf: 'MG', codigo_municipio: '4123', page: 1, page_size: 10 }, expect.any(AbortSignal)))
+    await waitFor(() => expect(screen.getByTestId('territory-map')).toHaveAttribute('data-selected', '3106200'))
+    expect(screen.getByRole('heading', { name: 'Belo Horizonte' })).toBeInTheDocument()
+  })
+  it('ativa uma única solicitação em lote quando a API publica not_requested e refaz a consulta uma vez', async () => {
+    const notRequested = { status: 'not_requested', reason: null, precision: null, latitude: null, longitude: null, source: null, observed_at: null, stale: false } as const
+    api.obras.mockResolvedValue(fastPage([{ ...work, geolocation: notRequested }]))
+    renderPage('/receita-federal/cno?uf=MG&codigo_municipio=4123&page=1&page_size=10')
+    await waitFor(() => expect(api.requestWorkGeolocations).toHaveBeenCalledExactlyOnceWith([41]))
+    await waitFor(() => expect(api.obras).toHaveBeenCalledTimes(2))
+  })
+  it('entrega ao mapa os pontos disponíveis sem solicitar estados resolvidos', async () => {
+    const available = { status: 'available', reason: null, precision: 'postal_code_approximation', latitude: -19.9, longitude: -43.9, source: 'provider', observed_at: '2026-09-28T12:00:00Z', stale: false } as const
+    api.obras.mockResolvedValue(fastPage([{ ...work, geolocation: available }]))
+    renderPage('/receita-federal/cno?uf=MG&codigo_municipio=4123&page=1&page_size=10')
+    await waitFor(() => expect(screen.getByTestId('territory-map')).toHaveAttribute('data-points', '1'))
+    expect(api.requestWorkGeolocations).not.toHaveBeenCalled()
   })
   it('carrega o domínio municipal CNO por UF sem solicitar contagem', async () => {
     const user = userEvent.setup(); renderPage()

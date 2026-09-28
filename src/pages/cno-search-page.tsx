@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { lazy, Suspense, useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Link, useLocation, useSearchParams } from 'react-router'
 import { ApiError } from '../api/errors'
@@ -26,6 +26,7 @@ async function listCnoMunicipalities(uf: string, signal?: AbortSignal) {
 export function CnoSearchPage({ kind = 'obras' }: { kind?: 'obras' | 'vinculos' }) {
   const [search, setSearch] = useSearchParams()
   const location = useLocation()
+  const queryClient = useQueryClient()
   const { filters, params, errors: urlErrors, active } = readSearch(search, kind)
   const [draft, setDraft] = useState<Record<string, string>>(filters)
   const [municipalitySearch, setMunicipalitySearch] = useState('')
@@ -47,6 +48,15 @@ export function CnoSearchPage({ kind = 'obras' }: { kind?: 'obras' | 'vinculos' 
   const errors = { ...(query.error instanceof ApiError ? query.error.fields : {}), ...urlErrors }
   const error = invalid ? new ApiError('Revise os parâmetros da URL.', 400, undefined, urlErrors) : query.error
   const view = query.data && !invalid && !query.isError ? adaptPage<WorkSummary | WorkLink>(query.data, params.page!, params.page_size!) : undefined
+  const visibleWorks = useMemo(() => kind === 'obras' && query.data && !invalid && !query.isError ? query.data.results as WorkSummary[] : [], [invalid, kind, query.data, query.isError])
+  const geolocationMutation = useMutation({ mutationKey: ['cno', 'work-geolocation-request'], mutationFn: (ids: number[]) => cnoApi.requestWorkGeolocations(ids), retry: false })
+  const requestWorkGeolocations = geolocationMutation.mutate
+  useEffect(() => {
+    const ids = visibleWorks.filter(work => work.geolocation?.status === 'not_requested' && !queryClient.getQueryData(['cno', 'work-geolocation-attempt', work.id])).map(work => work.id)
+    if (!ids.length) return
+    for (const id of ids) queryClient.setQueryData(['cno', 'work-geolocation-attempt', id], true)
+    requestWorkGeolocations(ids, { onSettled: () => { void query.refetch() } })
+  }, [queryClient, query.refetch, requestWorkGeolocations, visibleWorks])
   const returnTo = location.pathname + location.search
   const apply = (listAll = false, overrides: Record<string, string> = {}) => {
     const next = new URLSearchParams()
@@ -106,7 +116,7 @@ export function CnoSearchPage({ kind = 'obras' }: { kind?: 'obras' | 'vinculos' 
       </> : <div className="cno-form-grid">{field('cno')}{field('ni_responsavel')}</div>}
       <div className="form-actions"><button type="submit">Pesquisar</button>{!active && <button type="button" onClick={() => apply(true)}>Listar {kind === 'obras' ? 'obras' : 'vínculos'}</button>}</div>
     </form>
-    {kind === 'obras' && <section className="cno-map-card" aria-label="Explorar localidades no mapa"><div className="cno-map-heading"><div><h2>{draft.uf ? `Municípios de ${draft.uf}` : 'Explore o Brasil'}</h2><p>Clique em {draft.uf ? 'um município' : 'uma UF'} para filtrar as obras.</p></div>{draft.uf && <button type="button" onClick={() => { setDraft(current => ({ ...current, uf: '', codigo_municipio: '' })); setMunicipalitySearch(''); apply(false, { uf: '', codigo_municipio: '' }) }}>Voltar ao Brasil</button>}</div><Suspense fallback={<p role="status" className="cno-map-state">Carregando mapa…</p>}><TerritoryMap uf={draft.uf ?? ''} names={names} onState={selectState} onMunicipality={code => selectMunicipality(code, true)} /></Suspense><p className="cno-map-caption">A seleção no mapa atualiza a pesquisa. Os demais filtros estão na coluna à esquerda.</p></section>}
+    {kind === 'obras' && <section className="cno-map-card" aria-label="Explorar localidades no mapa"><div className="cno-map-heading"><div><h2>{selectedMunicipality ? selectedMunicipality.nome : draft.uf ? `Municípios de ${draft.uf}` : 'Explore o Brasil'}</h2><p>{selectedMunicipality ? 'Município enquadrado no mapa; pontos disponíveis representam aproximações pelo CEP.' : `Clique em ${draft.uf ? 'um município' : 'uma UF'} para filtrar as obras.`}</p></div>{draft.uf && <button type="button" onClick={() => { setDraft(current => ({ ...current, uf: '', codigo_municipio: '' })); setMunicipalitySearch(''); apply(false, { uf: '', codigo_municipio: '' }) }}>Voltar ao Brasil</button>}</div><Suspense fallback={<p role="status" className="cno-map-state">Carregando mapa…</p>}><TerritoryMap uf={draft.uf ?? ''} names={names} selectedMunicipalityIbge={selectedMunicipality?.codigo_ibge ?? null} works={visibleWorks} onState={selectState} onMunicipality={code => selectMunicipality(code, true)} /></Suspense><p className="cno-map-caption">{geolocationMutation.isPending ? 'Solicitando localizações aproximadas ainda não registradas…' : geolocationMutation.isError ? 'Não foi possível solicitar novas localizações; as obras e os pontos já registrados continuam disponíveis.' : 'A seleção no mapa atualiza a pesquisa. Obras sem coordenadas continuam disponíveis nos resultados.'}{visibleWorks.some(work => work.geolocation?.status === 'pending') && !geolocationMutation.isPending ? <> O enriquecimento de algumas obras está em andamento. <button className="cno-map-refresh" type="button" onClick={() => void query.refetch()}>Atualizar pontos</button></> : null}</p></section>}
     {kind === 'obras' ? <details className="cno-results-panel cno-results-disclosure"><summary>Resultados da pesquisa{view ? ` (${view.results.length} nesta página)` : ''}</summary>{resultContent}</details> : resultContent}
     </div>
   </section>

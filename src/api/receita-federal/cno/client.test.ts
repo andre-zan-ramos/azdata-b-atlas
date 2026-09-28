@@ -30,6 +30,15 @@ describe('contrato CNO', () => {
     await expect(api.obra('../x')).rejects.toMatchObject({ status: 404 })
     expect(adapter).toHaveBeenCalledTimes(6)
   })
+  it('solicita geolocalização das ocorrências em lote e preserva o AbortSignal', async () => {
+    const adapter = vi.fn<AxiosAdapter>(async config => ({ data: { results: [] }, status: 202, statusText: 'Accepted', headers: {}, config }))
+    const api = createCnoApi(axios.create({ adapter }))
+    const signal = new AbortController().signal
+    await api.requestWorkGeolocations([41, 42], signal)
+    expect(adapter).toHaveBeenCalledOnce()
+    expect(adapter.mock.calls[0][0]).toMatchObject({ method: 'post', url: 'api/v1/receita-federal/cno/obras/geolocation/request/', signal })
+    expect(JSON.parse(String(adapter.mock.calls[0][0].data))).toEqual({ occurrence_ids: [41, 42] })
+  })
   it.each(['page=0', 'page=1e2', 'page=1000000000', 'page_size=20', 'page_size=', 'include_total=1', 'cno=1&cno=2', 'page=1&page=2', 'include_total=true&include_total=false'])('valida URL %s antes do HTTP', query => {
     expect(Object.keys(readSearch(new URLSearchParams(query), 'obras').errors).length).toBeGreaterThan(0)
   })

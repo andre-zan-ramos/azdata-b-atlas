@@ -1,7 +1,7 @@
 import type { AxiosInstance } from 'axios'
 import { apiClient } from '../../client'
 import { ApiError } from '../../errors'
-import type { Area, Cnae, CnoMunicipality, LinkFilters, MunicipalityFilters, Page, PaginationParams, WorkDetail, WorkFilters, WorkLink, WorkSummary } from './types'
+import type { Area, Cnae, CnoMunicipality, LinkFilters, MunicipalityFilters, Page, PaginationParams, WorkDetail, WorkFilters, WorkGeolocationRequestResult, WorkLink, WorkSummary } from './types'
 
 export const filterKeys = {
   obras: ['cno', 'ni_responsavel', 'uf', 'codigo_municipio', 'situacao', 'cnae', 'cno_vinculado', 'data_inicio_obra_de', 'data_inicio_obra_ate'],
@@ -31,6 +31,11 @@ export function createCnoApi(client: AxiosInstance = apiClient) {
     cnaes: (params: PaginationParams & { cno?: string; cnae?: string }, signal?: AbortSignal) => list<Cnae>('cnaes', params, signal),
     vinculos: (params: LinkFilters, signal?: AbortSignal) => list<WorkLink>('vinculos', params, signal),
     municipios: (params: MunicipalityFilters, signal?: AbortSignal) => list<CnoMunicipality>('municipios', params, signal),
+    requestWorkGeolocations: async (occurrenceIds: number[], signal?: AbortSignal) => (await client.post<{ results: WorkGeolocationRequestResult[] }>(
+      'api/v1/receita-federal/cno/obras/geolocation/request/',
+      { occurrence_ids: occurrenceIds },
+      { signal, validateStatus: status => [200, 202, 400, 404, 409, 429, 503].includes(status) },
+    )).data,
     obra: async (id: string, signal?: AbortSignal) => {
       if (!/^[0-9]+$/.test(id)) throw new ApiError('Ocorrência não disponível.', 404)
       return (await client.get<WorkDetail>(`api/v1/receita-federal/cno/obras/${id}/`, { signal })).data

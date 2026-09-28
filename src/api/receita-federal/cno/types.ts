@@ -7,6 +7,10 @@ export interface WorkFilters extends PaginationParams { cno?: string; ni_respons
 export interface LinkFilters extends PaginationParams { cno?: string; ni_responsavel?: string }
 export interface MunicipalityFilters extends PaginationParams { uf?: string; nome?: string }
 export interface CnoMunicipality { nome: string; uf: string; codigo_tom: string; codigo_ibge: string | null }
+export type WorkGeolocationStatus = 'not_requested' | 'pending' | 'available' | 'unavailable' | 'temporary_error' | 'stale' | 'disabled'
+export type WorkGeolocationReason = 'cep_missing' | 'cep_invalid' | 'not_found' | 'no_coordinates' | 'context_mismatch' | 'load_in_progress' | 'producer_unavailable' | 'provider_unavailable' | 'feature_disabled'
+export interface WorkGeolocation { status: WorkGeolocationStatus; reason: WorkGeolocationReason | null; precision: 'postal_code_approximation' | null; latitude: number | null; longitude: number | null; source: string | null; observed_at: string | null; stale: boolean }
+export interface WorkGeolocationRequestResult { id: number; geolocation: WorkGeolocation }
 export interface WorkSummary {
   id: number; cno: string | null; nome: string | null; nome_empresarial: string | null;
   ni_responsavel: string | null; qualificacao_responsavel: string | null;
@@ -14,6 +18,7 @@ export interface WorkSummary {
   situacao: string | null; data_situacao: string | null; data_inicio_obra: string | null; tipo_logradouro: string | null;
   logradouro: string | null; numero: string | null; bairro: string | null;
   complemento: string | null; cep: string | null; release: string;
+  geolocation?: WorkGeolocation;
 }
 export interface Area { id: number; cno: string | null; categoria: string | null; destinacao: string | null; tipo_construcao: string | null; tipo_area: string | null; tipo_area_complementar: string | null; metragem: string | null }
 export interface Cnae { id: number; cno: string | null; cnae: string | null; data_registro_cnae: string | null }

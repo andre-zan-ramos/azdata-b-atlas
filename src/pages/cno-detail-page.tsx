@@ -12,8 +12,9 @@ import { internalReturnTo } from '../utils/navigation'
 
 type Collection = 'areas' | 'cnaes' | 'vinculos' | 'obras_vinculadas'
 type Child = Area | Cnae | WorkLink | WorkSummary
+type WorkScalarKey = Exclude<keyof WorkSummary, 'geolocation'>
 const collections: [Collection, string][] = [['areas', 'Áreas'], ['cnaes', 'CNAEs'], ['vinculos', 'Vínculos'], ['obras_vinculadas', 'Obras vinculadas']]
-const sections: [string, (keyof WorkSummary | 'codigo_pais' | 'pais' | 'data_inicio_obra' | 'data_inicio_responsabilidade' | 'data_registro' | 'cno_vinculado' | 'caixa_postal' | 'unidade_medida' | 'area_total' | 'codigo_localizacao')[]][] = [
+const sections: [string, (WorkScalarKey | 'codigo_pais' | 'pais' | 'data_inicio_obra' | 'data_inicio_responsabilidade' | 'data_registro' | 'cno_vinculado' | 'caixa_postal' | 'unidade_medida' | 'area_total' | 'codigo_localizacao')[]][] = [
   ['Identificação', ['id', 'cno', 'nome', 'nome_empresarial', 'cno_vinculado']],
   ['Responsável', ['ni_responsavel', 'qualificacao_responsavel', 'data_inicio_responsabilidade']],
   ['Endereço e localização', ['codigo_pais', 'pais', 'codigo_municipio', 'municipio', 'uf', 'tipo_logradouro', 'logradouro', 'numero', 'bairro', 'complemento', 'cep', 'caixa_postal', 'codigo_localizacao']],
