@@ -42,6 +42,20 @@ describe('contrato CNPJ', () => {
     expect(adapter.mock.calls[0][0].signal).toBe(controller.signal)
     expect(String(adapter.mock.calls[0][0].params)).toBe('q=maria&q_modo=fim&page=2&page_size=25&agrupar=true')
   })
+  it('solicita geolocalização pela rota correta, com corpo vazio, CNPJ literal e AbortSignal', async () => {
+    const adapter = vi.fn<AxiosAdapter>(async config => ({ data: { status: 'pending' }, status: 202, statusText: 'Accepted', headers: {}, config }))
+    const api = createCnpjApi(axios.create({ adapter }))
+    const controller = new AbortController()
+    await api.requestEstablishmentGeolocation('00123456000199', controller.signal)
+    expect(adapter).toHaveBeenCalledOnce()
+    expect(adapter.mock.calls[0][0]).toMatchObject({ method: 'post', url: 'api/v1/receita-federal/cnpj/estabelecimentos/00123456000199/geolocation/request/', signal: controller.signal })
+    expect(adapter.mock.calls[0][0].data).toBeUndefined()
+  })
+  it.each([400, 404, 409, 429, 503])('preserva o envelope normalizado em HTTP %s', async status => {
+    const envelope = { status: status === 503 ? 'temporary_error' : 'unavailable', reason: 'producer_unavailable', precision: null, latitude: null, longitude: null, source: null, observed_at: null, stale: false }
+    const adapter = vi.fn<AxiosAdapter>(async config => ({ data: envelope, status, statusText: 'Controlled', headers: {}, config }))
+    await expect(createCnpjApi(axios.create({ adapter })).requestEstablishmentGeolocation('00123456000199')).resolves.toEqual(envelope)
+  })
   it.each(['00123456', '00123456000199'])('mantém a busca de CNPJ %s sem inventar parâmetros', async q => {
     const adapter = vi.fn<AxiosAdapter>(async config => ({ data: { results: [] }, status: 200, statusText: 'OK', headers: {}, config }))
     const api = createCnpjApi(axios.create({ adapter }))

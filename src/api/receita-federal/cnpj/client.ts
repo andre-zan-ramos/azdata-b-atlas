@@ -1,6 +1,6 @@
 import type { AxiosInstance } from 'axios'
 import { apiClient } from '../../client'
-import type { BusinessSearchFilters, BusinessSearchItem, CodeDescription, Company, CompanyDetail, CompanyFilters, CountedPage, EstablishmentDetail, EstablishmentFilters, EstablishmentListItem, FastPage, GroupedPartnerSearchItem, LocationFacetFilters, LocationFacetItem, Municipality, PageSize, Paginated, PartnerFilters } from './types'
+import type { BusinessSearchFilters, BusinessSearchItem, CodeDescription, Company, CompanyDetail, CompanyFilters, CountedPage, EstablishmentDetail, EstablishmentFilters, EstablishmentGeolocation, EstablishmentListItem, FastPage, GroupedPartnerSearchItem, LocationFacetFilters, LocationFacetItem, Municipality, PageSize, Paginated, PartnerFilters } from './types'
 const PREFIX = 'api/v1/receita-federal/cnpj/'
 type Params = Record<string, string | number | boolean | undefined>
 export function serializeParams(params: Params) { const query = new URLSearchParams(); Object.entries(params).forEach(([key, value]) => { if (value !== undefined && value !== '') query.set(key, String(value)) }); return query }
@@ -11,6 +11,7 @@ export function createCnpjApi(client: AxiosInstance = apiClient) {
     locationFacets: (params: LocationFacetFilters, signal?: AbortSignal) => get<CountedPage<LocationFacetItem>>('busca/facetas/localidades/', params, signal),
     establishments: (params: EstablishmentFilters, signal?: AbortSignal) => get<Paginated<EstablishmentListItem>>('estabelecimentos/', params, signal),
     establishment: (cnpj: string, signal?: AbortSignal) => get<EstablishmentDetail>(`estabelecimentos/${cnpj}/`, undefined, signal),
+    requestEstablishmentGeolocation: async (cnpj: string, signal?: AbortSignal) => (await client.post<EstablishmentGeolocation>(PREFIX + `estabelecimentos/${cnpj}/geolocation/request/`, undefined, { signal, validateStatus: status => [200, 202, 400, 404, 409, 429, 503].includes(status) })).data,
     companies: (params: CompanyFilters, signal?: AbortSignal) => get<Paginated<Company>>('empresas/', params, signal),
     company: (root: string, signal?: AbortSignal) => get<CompanyDetail>(`empresas/${root}/`, undefined, signal),
     partners: (params: PartnerFilters, signal?: AbortSignal) => get<FastPage<GroupedPartnerSearchItem>>('socios/', { ...params, agrupar: true }, signal),

@@ -4,6 +4,7 @@ import { Link, useLocation, useParams, useSearchParams } from 'react-router'
 import { cnpjApi } from '../api/receita-federal/cnpj/client'
 import { judicialApi } from '../api/judicial/client'
 import { JudicialProcessList } from '../components/judicial-process-list'
+import { EstablishmentGeolocationSection } from '../components/establishment-geolocation'
 import { QueryError } from '../components/query-state'
 import { PartnerLink } from '../components/partner-link'
 import { codedChoice, display, formatCnpj, formatDate, formatMoney } from '../utils/format'
@@ -63,6 +64,7 @@ export function EstablishmentDetailPage() {
       <article className="detail-card"><h2>Contatos</h2><dl><Field label="Telefone 1" value={[establishment.ddd1, establishment.telefone1].filter(Boolean).join(' ')} /><Field label="Telefone 2" value={[establishment.ddd2, establishment.telefone2].filter(Boolean).join(' ')} /><Field label="E-mail" value={establishment.correio_eletronico} /></dl></article>
       <article className="detail-card"><h2>Simples / MEI</h2><dl><Field label="Optante pelo Simples" value={codedChoice(establishment.empresa.simples?.opcao_simples)} /><Field label="Opção pelo Simples" value={formatDate(establishment.empresa.simples?.data_opcao_simples)} /><Field label="Optante pelo MEI" value={codedChoice(establishment.empresa.simples?.opcao_mei)} /></dl></article>
     </div>
+    <EstablishmentGeolocationSection cnpj={establishment.cnpj} geolocation={establishment.geolocation} refetch={query.refetch} />
     <h2 className="section-title">Atividades</h2>
     <div className="detail-card"><p><strong>Principal:</strong> {establishment.cnae_fiscal_principal ? `${establishment.cnae_fiscal_principal.codigo} · ${establishment.cnae_fiscal_principal.descricao}` : 'Não informado'}</p>{establishment.cnaes_secundarios.length > 0 && <ul>{establishment.cnaes_secundarios.map(cnae => <li key={`${cnae.codigo}-${cnae.ordem}`}>{cnae.codigo} · {cnae.descricao}</li>)}</ul>}</div>
     <h2 className="section-title">Sócios da empresa</h2>

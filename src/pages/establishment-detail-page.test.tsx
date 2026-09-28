@@ -1,4 +1,5 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
+import { StrictMode, type ReactNode } from 'react'
 import { MemoryRouter, Route, Routes } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { cnpjApi } from '../api/receita-federal/cnpj/client'
@@ -7,9 +8,11 @@ import type { EstablishmentDetail } from '../api/receita-federal/cnpj/types'
 import { Providers } from '../app/providers'
 import { EstablishmentDetailPage } from './establishment-detail-page'
 
-vi.mock('../api/receita-federal/cnpj/client', () => ({ cnpjApi: { establishment: vi.fn() } }))
+vi.mock('../api/receita-federal/cnpj/client', () => ({ cnpjApi: { establishment: vi.fn(), requestEstablishmentGeolocation: vi.fn() } }))
 vi.mock('../api/judicial/client', () => ({ judicialApi: { byDocument: vi.fn() } }))
+vi.mock('react-leaflet', () => ({ MapContainer: ({ children }: { children: ReactNode }) => <div data-testid="postal-map">{children}</div>, TileLayer: () => null, CircleMarker: ({ children }: { children: ReactNode }) => <div data-testid="postal-marker">{children}</div>, Popup: ({ children }: { children: ReactNode }) => <>{children}</> }))
 const establishmentMock = vi.mocked(cnpjApi.establishment)
+const geolocationMock = vi.mocked(cnpjApi.requestEstablishmentGeolocation)
 const judicialMock = vi.mocked(judicialApi.byDocument)
 
 const establishment: EstablishmentDetail = {
@@ -50,22 +53,22 @@ const establishment: EstablishmentDetail = {
   situacao_especial: null,
   data_situacao_especial: null,
   socios: [],
+  geolocation: { status: 'available', reason: null, precision: 'postal_code_approximation', latitude: -19.92, longitude: -43.94, source: 'brasilapi_cep_v2', observed_at: '2026-09-28T12:00:00Z', stale: false },
 }
 
-function renderPage() {
-  return render(
-    <Providers>
+function renderPage(strict = false) {
+  const page = <Providers>
       <MemoryRouter initialEntries={[`/receita-federal/cnpj/estabelecimentos/${establishment.cnpj}`]}>
         <Routes>
           <Route path="/receita-federal/cnpj/estabelecimentos/:cnpj" element={<EstablishmentDetailPage />} />
         </Routes>
       </MemoryRouter>
-    </Providers>,
-  )
+    </Providers>
+  return render(strict ? <StrictMode>{page}</StrictMode> : page)
 }
 
 describe('cabeçalho do estabelecimento', () => {
-  beforeEach(() => { vi.clearAllMocks(); establishmentMock.mockResolvedValue(establishment); judicialMock.mockResolvedValue({ source_total: 0, page: 1, page_size: 10, has_next: false, has_previous: false, returned_count: 0, duplicates_removed: 0, results: [] }) })
+  beforeEach(() => { vi.clearAllMocks(); establishmentMock.mockResolvedValue(establishment); geolocationMock.mockResolvedValue(establishment.geolocation); judicialMock.mockResolvedValue({ source_total: 0, page: 1, page_size: 10, has_next: false, has_previous: false, returned_count: 0, duplicates_removed: 0, results: [] }) })
 
   it('apresenta a empresa uma única vez como retorno e identifica a filial', async () => {
     renderPage()
@@ -86,5 +89,57 @@ describe('cabeçalho do estabelecimento', () => {
     renderPage()
     expect(await screen.findByText('Nenhum processo encontrado')).toBeInTheDocument()
     expect(judicialMock).toHaveBeenCalledWith(establishment.cnpj, { page: 1, page_size: 10 }, expect.any(AbortSignal))
+  })
+
+  it('mostra marcador somente para coordenada postal disponível e a identifica como aproximação', async () => {
+    renderPage()
+    expect(await screen.findByTestId('postal-marker')).toBeInTheDocument()
+    expect(screen.getByText(/não representa o endereço exato/)).toBeInTheDocument()
+    expect(geolocationMock).not.toHaveBeenCalled()
+  })
+
+  it.each(['pending', 'available', 'unavailable', 'temporary_error', 'stale', 'disabled'] as const)('não solicita automaticamente no estado %s', async status => {
+    establishmentMock.mockResolvedValue({ ...establishment, geolocation: { ...establishment.geolocation, status, latitude: null, longitude: null, precision: null } })
+    renderPage()
+    await screen.findByRole('heading', { name: 'Localização aproximada pelo CEP' })
+    expect(geolocationMock).not.toHaveBeenCalled()
+    expect(screen.queryByTestId('postal-marker')).not.toBeInTheDocument()
+  })
+
+  it('não mostra coordenadas quando há divergência de contexto', async () => {
+    establishmentMock.mockResolvedValue({ ...establishment, geolocation: { ...establishment.geolocation, reason: 'context_mismatch' } })
+    renderPage()
+    await screen.findByRole('heading', { name: 'Localização aproximada pelo CEP' })
+    expect(screen.queryByTestId('postal-marker')).not.toBeInTheDocument()
+  })
+
+  it('faz uma única tentativa para not_requested em StrictMode e um único refetch após a mutation', async () => {
+    establishmentMock.mockResolvedValue({ ...establishment, cnpj: '00123456000199', geolocation: { ...establishment.geolocation, status: 'not_requested', latitude: null, longitude: null, precision: null } })
+    geolocationMock.mockResolvedValue({ ...establishment.geolocation, status: 'pending', latitude: null, longitude: null, precision: null })
+    renderPage(true)
+    await waitFor(() => expect(geolocationMock).toHaveBeenCalledTimes(1))
+    expect(geolocationMock).toHaveBeenCalledWith('00123456000199')
+    // StrictMode faz duas leituras iniciais; a terceira é o único refetch pós-mutation.
+    await waitFor(() => expect(establishmentMock).toHaveBeenCalledTimes(3))
+  })
+
+  it('mantém o cadastro oficial visível quando a solicitação falha', async () => {
+    establishmentMock.mockResolvedValue({ ...establishment, geolocation: { ...establishment.geolocation, status: 'not_requested', latitude: null, longitude: null, precision: null } })
+    geolocationMock.mockRejectedValue(new Error('timeout'))
+    renderPage()
+    expect(await screen.findByRole('heading', { name: 'ATLAS CENTRO' })).toBeInTheDocument()
+    expect(await screen.findByRole('alert')).toHaveTextContent('cadastro oficial permanece disponível')
+  })
+
+  it.each([
+    ['cep_missing', 'não informa um CEP'], ['cep_invalid', 'formato válido'], ['not_found', 'não foi localizado'], ['no_coordinates', 'não retornou coordenadas'],
+    ['context_mismatch', 'divergiu do contexto'], ['load_in_progress', 'base CNPJ está em atualização'], ['producer_unavailable', 'serviço de enriquecimento'],
+    ['provider_unavailable', 'provedor geográfico'], ['feature_disabled', 'desabilitada no momento'],
+  ] as const)('explica o motivo controlado %s', async (reason, message) => {
+    const status = reason === 'feature_disabled' ? 'disabled' : reason === 'context_mismatch' ? 'stale' : reason.includes('unavailable') || reason === 'load_in_progress' ? 'temporary_error' : 'unavailable'
+    establishmentMock.mockResolvedValue({ ...establishment, geolocation: { ...establishment.geolocation, status, reason, latitude: null, longitude: null, precision: null } })
+    renderPage()
+    expect(await screen.findByText(new RegExp(message))).toBeInTheDocument()
+    expect(screen.queryByTestId('postal-marker')).not.toBeInTheDocument()
   })
 })
