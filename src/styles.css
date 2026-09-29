@@ -172,9 +172,9 @@ button { padding: 9px 14px; border: 0; border-radius: 5px; background: var(--bra
 .facet-title span { color: var(--muted); font-size: 11px; font-weight: 400; }
 .facet-close { display: grid; width: 28px; height: 28px; min-width: 28px; padding: 0; place-items: center; background: transparent; color: var(--muted); font-size: 20px; font-weight: 400; line-height: 1; }
 .facet-close:hover { background: #edf2ee; color: var(--brand); }
-.facet-search > label { margin-bottom: 5px; }
-.facet-search > div { display: flex; gap: 6px; }
-.facet-search input { min-width: 0; }
+.facet-fields { display: grid; grid-template-columns: 72px 1fr; align-items: center; gap: 8px 10px; }
+.facet-fields label { margin: 0; }
+.facet-fields input, .facet-fields select { min-width: 0; }
 .facet-clear { margin-top: 10px; padding: 4px 0; background: transparent; color: var(--brand); font-size: 11px; font-weight: 500; text-decoration: underline; text-underline-offset: 3px; }
 .facet-options { max-height: 300px; margin-top: 12px; overflow-y: auto; border-top: 1px solid var(--line); }
 .facet-options > p { margin: 12px 2px; color: var(--muted); font-size: 12px; line-height: 1.45; }
