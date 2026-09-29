@@ -33,26 +33,44 @@ describe('enriquecimento do Portal da Transparência', () => {
     expect(personMock).not.toHaveBeenCalled(); expect(resourcesMock).not.toHaveBeenCalled(); expect(contractsMock).not.toHaveBeenCalled()
     await search(user)
     await waitFor(() => expect(personMock).toHaveBeenCalledWith(cnpj, expect.any(AbortSignal)))
-    expect(resourcesMock).toHaveBeenCalledTimes(1)
+    expect(resourcesMock).toHaveBeenCalledWith(cnpj, {}, expect.any(AbortSignal))
     expect(contractsMock).toHaveBeenCalledWith(cnpj, 1, expect.any(AbortSignal))
   })
 
   it('exibe as três seções empilhadas e dados simples ou aninhados em tabelas', async () => {
     const user = userEvent.setup()
-    personMock.mockResolvedValue({ razaoSocial: 'EMPRESA TESTE', favorecidoDespesas: true, possuiContratacao: true, sancionadoCEIS: false, habilitadoRenunciaFiscal: false })
-    contractsMock.mockResolvedValue({ ...emptyPage, returned_count: 1, results: [{ numero: '0007', compra: { objeto: 'Aquisição', contato: '' } }] })
+    personMock.mockResolvedValue({ razaoSocial: 'EMPRESA TESTE', favorecidoDespesas: true, possuiContratacao: true, sancionadoCEIS: false, habilitadoRenunciaFiscal: false, indicadores: [{ key: 'favorecidoDespesas', label: 'Favorecido de despesas', description: 'O Portal sinaliza que a pessoa jurídica consta como favorecida em despesas públicas.', value: true, present: true, source_scope: 'despesas_publicas', reference_date: null }] })
+    contractsMock.mockResolvedValue({ ...emptyPage, returned_count: 1, results: [{ id: 101208736, numero: '232019', situacaoContrato: 'Fechado', objeto: 'Aquisição de ferramenta informatizada', valorInicialCompra: '9.312,00', dataAssinatura: '2025-03-14', compra: { numero: '0007', objeto: 'Aquisição', contato: '' } }] })
     renderFeature(); await search(user)
     expect(await screen.findByRole('heading', { name: 'Dados da pessoa jurídica' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Recursos recebidos' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Contratos' })).toBeInTheDocument()
-    expect(await screen.findByText('Recebeu pagamentos de despesas públicas')).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Ver detalhes: Favorecido de despesas' })).toBeInTheDocument()
     expect(screen.getByText('Possui contratação com o Governo Federal')).toBeInTheDocument()
     expect(screen.getByText('Está habilitada a receber benefício de renúncia fiscal')).toBeInTheDocument()
     expect(screen.getByText('Consta no cadastro de empresas inidôneas e suspensas (CEIS)')).toBeInTheDocument()
-    expect(screen.getAllByRole('table').length).toBeGreaterThanOrEqual(2)
     expect(screen.getByText('EMPRESA TESTE')).toHaveAttribute('title', 'EMPRESA TESTE')
-    expect(screen.getByText('0007')).toBeInTheDocument()
     expect(screen.getAllByText('Não informado').length).toBeGreaterThan(0)
+    expect(screen.queryByText('Outras informações')).not.toBeInTheDocument()
+
+    const contract = screen.getByText('Contrato 232019').closest('details') as HTMLElement
+    const contractSummary = contract.querySelector('summary') as HTMLElement
+    expect(contract).not.toHaveAttribute('open')
+    expect(within(contractSummary).getByText('Fechado')).toBeInTheDocument()
+    expect(within(contractSummary).getByText('Aquisição de ferramenta informatizada')).toHaveAttribute('title', 'Aquisição de ferramenta informatizada')
+    await user.click(within(contract).getByText('Contrato 232019'))
+    expect(contract).toHaveAttribute('open')
+    expect(within(contract).getByText(/9\.312,00/)).toBeInTheDocument()
+    expect(within(contract).getByText('14/03/2025')).toBeInTheDocument()
+    expect(within(contract).getByText('0007')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Ver detalhes: Favorecido de despesas' }))
+    const dialog = screen.getByRole('dialog', { name: 'Favorecido de despesas' })
+    expect(within(dialog).getByText('O Portal sinaliza que a pessoa jurídica consta como favorecida em despesas públicas.')).toBeInTheDocument()
+    expect(within(dialog).getByText('despesas_publicas')).toBeInTheDocument()
+    expect(within(dialog).getByText('favorecidoDespesas')).toBeInTheDocument()
+    await user.click(within(dialog).getByRole('button', { name: 'Fechar' }))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
   it('mantém sucesso de um domínio quando outro falha', async () => {
@@ -61,6 +79,20 @@ describe('enriquecimento do Portal da Transparência', () => {
     expect(await screen.findByText('00.123.456/0001-99')).toBeInTheDocument()
     expect(await within(section('Contratos')).findByRole('alert')).toHaveTextContent('temporariamente indisponível')
     expect(screen.queryByText('privado')).not.toBeInTheDocument()
+  })
+
+  it('solicita e exibe os três recursos mais recentes sem impor período inicial', async () => {
+    const user = userEvent.setup()
+    resourcesMock.mockResolvedValue({ ...emptyPage, returned_count: 3, results: [
+      { anoMes: '03/2026', valor: '30,00' },
+      { anoMes: '02/2026', valor: '20,00' },
+      { anoMes: '01/2026', valor: '10,00' },
+    ] })
+    renderFeature(); await search(user)
+    await waitFor(() => expect(resourcesMock).toHaveBeenCalledWith(cnpj, {}, expect.any(AbortSignal)))
+    expect(await screen.findByText('Recurso 1')).toBeInTheDocument()
+    expect(screen.getByText('Recurso 2')).toBeInTheDocument()
+    expect(screen.getByText('Recurso 3')).toBeInTheDocument()
   })
 
   it('preserva códigos e valores monetários literais, mas apresenta booleanos como Sim e Não', async () => {
