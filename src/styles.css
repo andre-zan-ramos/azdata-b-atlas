@@ -206,13 +206,13 @@ button.facet-option:hover { background: #f4f7f4; }
 .portal-enrichment { margin-top: 46px; padding-top: 30px; border-top: 1px solid var(--line); }
 .portal-enrichment > header h2 { margin: 0; font-size: 22px; }
 .portal-enrichment > header .hint { max-width: 780px; margin: 7px 0 0; }
-.portal-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-top: 18px; align-items: start; }
-.portal-panel { min-width: 0; padding: 16px; border: 1px solid var(--line); border-radius: 10px; background: #fff; }
-.portal-panel > header { min-height: 76px; }
+.portal-primary-action { margin-top: 18px; }
+.portal-sections { display: grid; gap: 18px; margin-top: 18px; }
+.portal-panel { min-width: 0; padding: 20px; border: 1px solid var(--line); border-radius: 10px; background: #fff; }
 .portal-panel h3 { margin: 0; font-size: 16px; }
-.portal-panel header p, .portal-idle, .portal-caveat { color: var(--muted); font-size: 11px; line-height: 1.45; }
+.portal-panel header p, .portal-idle { color: var(--muted); font-size: 11px; line-height: 1.45; }
 .portal-panel header p { margin: 6px 0 0; }
-.portal-panel form > button, .portal-panel > button { margin-top: 12px; }
+.portal-panel form > button { margin-top: 12px; }
 .portal-controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(105px, 1fr)); gap: 8px; margin-top: 12px; }
 .portal-controls label { color: var(--muted); font-size: 11px; font-weight: 600; }
 .portal-controls input { margin-top: 4px; }
@@ -220,21 +220,32 @@ button.facet-option:hover { background: #f4f7f4; }
 .portal-state p { margin: 4px 0 0; }
 .portal-error { border: 1px solid #d9b7af; background: #fff8f6; color: #69453e; }
 .portal-empty { border: 1px solid #dce2de; background: #fafbf9; }
-.portal-success, .portal-records { margin-top: 14px; }
-.portal-caveat { margin: 12px 0 0; padding-top: 10px; border-top: 1px solid var(--line); }
-.portal-literal-record { display: grid; gap: 7px; margin: 0; }
-.portal-literal-record > div { display: grid; grid-template-columns: minmax(90px, .8fr) minmax(0, 1.3fr); gap: 8px; }
-.portal-literal-record dt { color: var(--muted); font-size: 10px; overflow-wrap: anywhere; }
-.portal-literal-record dd { min-width: 0; margin: 0; font-size: 12px; overflow-wrap: anywhere; white-space: pre-wrap; }
+.portal-records { display: grid; gap: 18px; margin-top: 14px; }
+.portal-table-wrap { max-width: 100%; overflow-x: auto; }
+.portal-company-identity { display: grid; grid-template-columns: minmax(180px, .75fr) minmax(260px, 2fr) minmax(180px, 1fr); margin: 16px 0 0; border: 1px solid var(--line); border-radius: 7px; background: #fafbf9; }
+.portal-company-identity > div { min-width: 0; padding: 11px 13px; }
+.portal-company-identity > div + div { border-left: 1px solid var(--line); }
+.portal-company-identity dt { color: var(--muted); font-size: 10px; font-weight: 700; text-transform: uppercase; }
+.portal-company-identity dd { margin: 5px 0 0; font-size: 12px; font-weight: 650; }
+.portal-ellipsis { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.portal-indicators, .portal-additional-data { margin-top: 18px; }
+.portal-indicators h4, .portal-additional-data h4 { margin: 0 0 9px; font-size: 12px; }
+.portal-indicator-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.portal-indicator { display: flex; min-width: 0; align-items: center; justify-content: space-between; gap: 8px; padding: 9px 10px; border: 1px solid var(--line); border-radius: 7px; background: #fafbf9; }
+.portal-indicator > span:first-child { overflow: hidden; color: var(--muted); font-size: 10px; font-weight: 650; line-height: 1.3; text-overflow: ellipsis; white-space: nowrap; }
+.portal-indicator .portal-boolean { flex: 0 0 auto; }
+.portal-data-table { width: 100%; border-collapse: collapse; font-size: 12px; table-layout: auto; }
+.portal-data-table caption { padding: 10px 12px; border: 1px solid var(--line); border-bottom: 0; background: #f2f5f3; font-size: 13px; font-weight: 700; text-align: left; }
+.portal-data-table th, .portal-data-table td { padding: 9px 12px; border: 1px solid var(--line); text-align: left; vertical-align: top; overflow-wrap: anywhere; }
+.portal-data-table th { width: 240px; background: #fafbf9; color: var(--muted); font-weight: 650; }
+.portal-data-table .portal-data-table { min-width: 440px; }
+.portal-boolean { display: inline-block; min-width: 34px; padding: 2px 7px; border-radius: 999px; font-size: 11px; font-weight: 700; text-align: center; }
+.portal-boolean.is-yes { background: #e1f1e9; color: #205d43; }
+.portal-boolean.is-no { background: #edf0ee; color: #526159; }
 .portal-literal-empty { color: #816a47; font-style: italic; }
-.portal-literal-list { margin: 0; padding-left: 18px; }
-.portal-records { display: grid; gap: 10px; }
-.portal-records > article { padding: 12px; border: 1px solid var(--line); border-radius: 7px; background: #fafbf9; }
-.portal-records h4 { margin: 0 0 10px; font-size: 12px; }
-.portal-page-facts { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin: 14px 0 0; }
-.portal-page-facts > div { padding: 8px; border-radius: 6px; background: #f2f5f3; }
-.portal-page-facts dt { color: var(--muted); font-size: 9px; }
-.portal-page-facts dd { margin: 3px 0 0; font-size: 12px; font-weight: 650; }
+.portal-page-summary { margin: 14px 0 0; color: var(--muted); font-size: 11px; }
+.portal-filter { margin-top: 14px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 7px; background: #fafbf9; }
+.portal-filter summary { cursor: pointer; font-size: 12px; font-weight: 700; }
 .partner-detail-document { margin: 8px 0 0; color: var(--muted); font-size: 13px; }.partner-detail-summary { margin-top: 24px; }.partner-judicial > .hint { margin: 8px 0 0; }
 .judicial-search-results { margin-top: 8px; }
 .partner-judicial.judicial-search-results { margin-top: 46px; }
@@ -245,9 +256,11 @@ button.facet-option:hover { background: #f4f7f4; }
 .process-external-actions { position: relative; z-index: 2; display: flex; flex-wrap: wrap; gap: 6px; }.process-external-actions a { padding: 6px 8px; border: 1px solid #cbd7d0; border-radius: 6px; color: var(--brand); font-size: 11px; font-weight: 650; text-decoration: none; white-space: nowrap; }.process-external-actions a:hover { border-color: #82aa9e; background: #f0f5f1; }.process-dialog { width: min(900px, calc(100vw - 32px)); max-height: calc(100vh - 32px); padding: 0; overflow: hidden; border: 1px solid #cbd7d0; border-radius: 14px; color: #25352f; box-shadow: 0 24px 80px rgb(18 33 28 / 28%); }.process-dialog[open] { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; }.process-dialog::backdrop { background: rgb(18 33 28 / 45%); }.process-dialog-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; padding: 20px 22px; border-bottom: 1px solid var(--line); }.process-dialog-heading h2 { margin: 4px 0; font-size: 21px; }.process-dialog-heading p { margin: 0; }.dialog-close { display: grid; width: 32px; min-width: 32px; height: 32px; padding: 0; place-items: center; background: transparent; color: var(--muted); font-size: 22px; }.dialog-close:hover { background: #edf2ee; }.process-dialog-body { min-height: 0; padding: 4px 22px 20px; overflow-y: auto; }.party-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 20px; padding: 16px; border: 1px solid var(--line); border-radius: 8px; background: #fafbf9; }.party-grid h4 { margin: 0 0 8px; font-size: 12px; }.party-grid ul { margin: 0; padding-left: 18px; font-size: 12px; }.party-grid li + li { margin-top: 7px; }.party-grid p { margin: 0; color: var(--muted); font-size: 12px; }.confidential-notice { margin-top: 20px; padding: 11px; background: #fff4e3; color: #755727; font-size: 12px; }.process-dialog footer { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 22px; border-top: 1px solid var(--line); background: #fafbf9; }.process-dialog footer > button { padding: 7px 13px; }
 .atlas-home .principle-strip { display: flex; align-items: center; gap: 16px; margin: 24px 0 0; padding: 19px 24px; border-radius: 15px; background: #e7f1ed; color: #176b5b; }.atlas-home .principle-strip > span { display: grid; width: 31px; height: 31px; flex: 0 0 31px; place-items: center; border: 1px solid #9bc7ba; border-radius: 50%; font-weight: 800; }.atlas-home .principle-strip strong { font-size: 13px; }.atlas-home .principle-strip p { margin: 3px 0 0; color: #5e766e; font-size: 11px; }
 @media (max-width: 900px) { .atlas-hero { grid-template-columns: 1fr; }.business-orbit { display: none; }.access-grid { grid-template-columns: 1fr 1fr; }.access-card.planned { grid-column: 1 / -1; } }
-@media (max-width: 1000px) { .portal-grid { grid-template-columns: 1fr; }.portal-panel > header { min-height: 0; } }
+@media (max-width: 900px) { .portal-indicator-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 700px) { .portal-panel { padding: 14px; }.portal-company-identity { grid-template-columns: 1fr; }.portal-company-identity > div + div { border-top: 1px solid var(--line); border-left: 0; }.portal-data-table th { width: 130px; } }
 @media (max-width: 620px) { .atlas-hero { min-height: 0; padding: 30px 24px; border-radius: 18px; }.atlas-hero h1 { font-size: 35px; }.home-section-heading { flex-direction: column; }.access-section { padding: 18px; }.access-grid { grid-template-columns: 1fr; }.access-card.planned { grid-column: auto; }.atlas-home .principle-strip { align-items: flex-start; } }
 @media (max-width: 480px) {
+  .portal-indicator-grid { grid-template-columns: 1fr; }
   .app-header { padding: 10px 16px; }
   .brand-mark { width: 38px; height: 38px; }
   h1 { letter-spacing: -1px; }

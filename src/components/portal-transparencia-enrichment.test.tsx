@@ -7,147 +7,85 @@ import type { PortalPage } from '../api/portal-transparencia/types'
 import { Providers } from '../app/providers'
 import { PortalTransparenciaEnrichment } from './portal-transparencia-enrichment'
 
-vi.mock('../api/portal-transparencia/client', () => ({
-  portalTransparenciaApi: { person: vi.fn(), resources: vi.fn(), contracts: vi.fn() },
-}))
-
+vi.mock('../api/portal-transparencia/client', () => ({ portalTransparenciaApi: { person: vi.fn(), resources: vi.fn(), contracts: vi.fn() } }))
 const personMock = vi.mocked(portalTransparenciaApi.person)
 const resourcesMock = vi.mocked(portalTransparenciaApi.resources)
 const contractsMock = vi.mocked(portalTransparenciaApi.contracts)
 const cnpj = '00123456000199'
 const emptyPage: PortalPage = { page: 1, returned_count: 0, total_count: null, has_next: null, has_previous: false, results: [] }
-
-function renderFeature() {
-  return render(<Providers><PortalTransparenciaEnrichment cnpj={cnpj} /></Providers>)
-}
-
-function panel(name: string) {
-  return screen.getByRole('heading', { name }).closest('article') as HTMLElement
-}
+function renderFeature() { return render(<Providers><PortalTransparenciaEnrichment cnpj={cnpj} /></Providers>) }
+function section(name: string) { return screen.getByRole('heading', { name }).closest('article') as HTMLElement }
+async function search(user: ReturnType<typeof userEvent.setup>) { await user.click(screen.getByRole('button', { name: 'Buscar dados no Portal da Transparência' })) }
 
 describe('enriquecimento do Portal da Transparência', () => {
   beforeEach(() => {
-    personMock.mockResolvedValue({ cnpj: '00123456000199' })
+    vi.useRealTimers()
+    personMock.mockResolvedValue({ cnpj })
     resourcesMock.mockResolvedValue(emptyPage)
     contractsMock.mockResolvedValue(emptyPage)
   })
 
-  it('começa ocioso e só consulta cada domínio por ação explícita', async () => {
-    const user = userEvent.setup()
-    renderFeature()
-    expect(screen.getAllByText('Consulta ainda não realizada.')).toHaveLength(3)
-    expect(personMock).not.toHaveBeenCalled()
-    expect(resourcesMock).not.toHaveBeenCalled()
-    expect(contractsMock).not.toHaveBeenCalled()
-
-    await user.click(within(panel('Pessoa jurídica')).getByRole('button', { name: 'Consultar pessoa jurídica' }))
+  it('mantém as consultas sob demanda e uma única ação inicia os três domínios', async () => {
+    const user = userEvent.setup(); renderFeature()
+    expect(screen.getByRole('link', { name: 'Portal da Transparência do Governo Federal' })).toHaveAttribute('href', 'https://api.portaldatransparencia.gov.br/')
+    expect(screen.queryByText('Enriquecimento externo')).not.toBeInTheDocument()
+    expect(screen.getByText('Nenhum dado do Portal foi solicitado nesta visita.')).toBeInTheDocument()
+    expect(personMock).not.toHaveBeenCalled(); expect(resourcesMock).not.toHaveBeenCalled(); expect(contractsMock).not.toHaveBeenCalled()
+    await search(user)
     await waitFor(() => expect(personMock).toHaveBeenCalledWith(cnpj, expect.any(AbortSignal)))
-    expect(resourcesMock).not.toHaveBeenCalled()
-    expect(contractsMock).not.toHaveBeenCalled()
+    expect(resourcesMock).toHaveBeenCalledTimes(1)
+    expect(contractsMock).toHaveBeenCalledWith(cnpj, 1, expect.any(AbortSignal))
   })
 
-  it('expõe carregamento e mantém outra consulta já carregada', async () => {
+  it('exibe as três seções empilhadas e dados simples ou aninhados em tabelas', async () => {
     const user = userEvent.setup()
-    let finishContracts!: (value: PortalPage) => void
-    contractsMock.mockImplementation(() => new Promise(resolve => { finishContracts = resolve }))
-    renderFeature()
-
-    await user.click(within(panel('Pessoa jurídica')).getByRole('button', { name: 'Consultar pessoa jurídica' }))
-    expect(await screen.findByText('00123456000199')).toBeInTheDocument()
-    await user.click(within(panel('Contratos')).getByRole('button', { name: 'Consultar contratos' }))
-    expect(screen.getByRole('status')).toHaveTextContent('Consultando contratos')
-    expect(screen.getByText('00123456000199')).toBeInTheDocument()
-    finishContracts(emptyPage)
-    expect(await screen.findByText('Nenhum registro retornado nesta página')).toBeInTheDocument()
+    personMock.mockResolvedValue({ razaoSocial: 'EMPRESA TESTE', favorecidoDespesas: true, possuiContratacao: true, sancionadoCEIS: false, habilitadoRenunciaFiscal: false })
+    contractsMock.mockResolvedValue({ ...emptyPage, returned_count: 1, results: [{ numero: '0007', compra: { objeto: 'Aquisição', contato: '' } }] })
+    renderFeature(); await search(user)
+    expect(await screen.findByRole('heading', { name: 'Dados da pessoa jurídica' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Recursos recebidos' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Contratos' })).toBeInTheDocument()
+    expect(await screen.findByText('Recebeu pagamentos de despesas públicas')).toBeInTheDocument()
+    expect(screen.getByText('Possui contratação com o Governo Federal')).toBeInTheDocument()
+    expect(screen.getByText('Está habilitada a receber benefício de renúncia fiscal')).toBeInTheDocument()
+    expect(screen.getByText('Consta no cadastro de empresas inidôneas e suspensas (CEIS)')).toBeInTheDocument()
+    expect(screen.getAllByRole('table').length).toBeGreaterThanOrEqual(2)
+    expect(screen.getByText('EMPRESA TESTE')).toHaveAttribute('title', 'EMPRESA TESTE')
+    expect(screen.getByText('0007')).toBeInTheDocument()
+    expect(screen.getAllByText('Não informado').length).toBeGreaterThan(0)
   })
 
-  it('não apaga dados de outro domínio quando uma consulta falha', async () => {
-    const user = userEvent.setup()
-    contractsMock.mockRejectedValue(new ApiError('privado', 503, 'portal_upstream_unavailable'))
-    renderFeature()
-
-    await user.click(within(panel('Pessoa jurídica')).getByRole('button', { name: 'Consultar pessoa jurídica' }))
-    expect(await screen.findByText('00123456000199')).toBeInTheDocument()
-    await user.click(within(panel('Contratos')).getByRole('button', { name: 'Consultar contratos' }))
-    expect(await within(panel('Contratos')).findByRole('alert')).toHaveTextContent('temporariamente indisponível')
-    expect(screen.getByText('00123456000199')).toBeInTheDocument()
+  it('mantém sucesso de um domínio quando outro falha', async () => {
+    const user = userEvent.setup(); contractsMock.mockRejectedValue(new ApiError('privado', 503, 'portal_upstream_unavailable'))
+    renderFeature(); await search(user)
+    expect(await screen.findByText('00.123.456/0001-99')).toBeInTheDocument()
+    expect(await within(section('Contratos')).findByRole('alert')).toHaveTextContent('temporariamente indisponível')
+    expect(screen.queryByText('privado')).not.toBeInTheDocument()
   })
 
-  it('preserva literalmente códigos, zeros, null, string vazia e valores monetários textuais', async () => {
+  it('preserva códigos e valores monetários literais, mas apresenta booleanos como Sim e Não', async () => {
     const user = userEvent.setup()
-    personMock.mockResolvedValue({ codigo: '0007', nulo: null, vazio: '', valorZero: '0,00', valorNegativo: '- 4.220,98', valorPositivo: '209.999,00', indicador: true })
-    renderFeature()
-    await user.click(within(panel('Pessoa jurídica')).getByRole('button', { name: 'Consultar pessoa jurídica' }))
-
-    for (const literal of ['0007', 'null', 'string vazia', '0,00', '- 4.220,98', '209.999,00', 'true']) {
-      expect(await screen.findByText(literal)).toBeInTheDocument()
-    }
-    expect(screen.getByText(/não comprovam cobertura completa/)).toBeInTheDocument()
+    personMock.mockResolvedValue({ codigo: '0007', valorZero: '0,00', valorNegativo: '- 4.220,98', participanteLicitacao: true, emitiuNFe: false })
+    renderFeature(); await search(user)
+    for (const literal of ['0007', '0,00', '- 4.220,98', 'Sim', 'Não']) expect(await screen.findByText(literal)).toBeInTheDocument()
+    expect(screen.queryByText('true')).not.toBeInTheDocument(); expect(screen.queryByText('false')).not.toBeInTheDocument()
   })
 
-  it('mantém total e próxima página desconhecidos e qualifica uma página vazia', async () => {
-    const user = userEvent.setup()
-    renderFeature()
-    await user.click(within(panel('Contratos')).getByRole('button', { name: 'Consultar contratos' }))
-
-    expect(await screen.findByText('Nenhum registro retornado nesta página')).toBeInTheDocument()
-    expect(screen.getAllByText('Desconhecido')).toHaveLength(2)
-    expect(screen.getByText('Isso não indica inexistência histórica de contratos.')).toBeInTheDocument()
-  })
-
-  it('consulta manualmente páginas de contratos sem carregamento automático', async () => {
-    const user = userEvent.setup()
-    contractsMock.mockResolvedValue({ ...emptyPage, page: 7 })
-    renderFeature()
-    const contracts = within(panel('Contratos'))
-    await user.clear(contracts.getByLabelText('Página'))
-    await user.type(contracts.getByLabelText('Página'), '7')
-    expect(contractsMock).not.toHaveBeenCalled()
-    await user.click(contracts.getByRole('button', { name: 'Consultar contratos' }))
-    await waitFor(() => expect(contractsMock).toHaveBeenCalledWith(cnpj, 7, expect.any(AbortSignal)))
-    expect(contracts.getByText('7')).toBeInTheDocument()
-  })
-
-  it('valida o período antes de consultar recursos e envia a página escolhida', async () => {
-    const user = userEvent.setup()
-    renderFeature()
-    const resources = within(panel('Recursos recebidos'))
-    await user.type(resources.getByLabelText('Início (MM/AAAA)'), '13/2025')
-    await user.type(resources.getByLabelText('Fim (MM/AAAA)'), '01/2025')
-    await user.click(resources.getByRole('button', { name: 'Consultar recursos' }))
+  it('deixa o filtro de recursos recolhido e valida antes de refazer somente essa consulta', async () => {
+    const user = userEvent.setup(); renderFeature(); await search(user)
+    await screen.findByText('00.123.456/0001-99')
+    const resources = within(section('Recursos recebidos'))
+    expect(resources.getByText('Filtrar por período').closest('details')).not.toHaveAttribute('open')
+    await user.click(resources.getByText('Filtrar por período'))
+    await user.clear(resources.getByLabelText('Início (MM/AAAA)')); await user.type(resources.getByLabelText('Início (MM/AAAA)'), '13/2025')
+    await user.click(resources.getByRole('button', { name: 'Aplicar período' }))
     expect(resources.getByRole('alert')).toHaveTextContent('formato MM/AAAA')
-    expect(resourcesMock).not.toHaveBeenCalled()
-
-    await user.clear(resources.getByLabelText('Início (MM/AAAA)'))
-    await user.type(resources.getByLabelText('Início (MM/AAAA)'), '02/2025')
-    await user.clear(resources.getByLabelText('Fim (MM/AAAA)'))
-    await user.type(resources.getByLabelText('Fim (MM/AAAA)'), '01/2025')
-    await user.click(resources.getByRole('button', { name: 'Consultar recursos' }))
-    expect(resources.getByRole('alert')).toHaveTextContent('anterior ou igual')
-
-    await user.clear(resources.getByLabelText('Fim (MM/AAAA)'))
-    await user.type(resources.getByLabelText('Fim (MM/AAAA)'), '03/2025')
-    await user.clear(resources.getByLabelText('Página'))
-    await user.type(resources.getByLabelText('Página'), '4')
-    await user.click(resources.getByRole('button', { name: 'Consultar recursos' }))
-    await waitFor(() => expect(resourcesMock).toHaveBeenCalledWith(cnpj, { mes_ano_inicio: '02/2025', mes_ano_fim: '03/2025', pagina: 4 }, expect.any(AbortSignal)))
+    expect(resourcesMock).toHaveBeenCalledTimes(1)
   })
 
-  it.each([
-    ['portal_integration_disabled', 503, 'integração está desabilitada'],
-    ['portal_upstream_timeout', 504, 'excedeu o tempo de espera'],
-    ['portal_upstream_rate_limited', 503, 'limitou temporariamente'],
-    ['portal_upstream_rejected', 502, 'rejeitou a consulta'],
-    ['portal_upstream_unavailable', 503, 'temporariamente indisponível'],
-    ['portal_upstream_invalid_response', 502, 'resposta inesperada'],
-    ['portal_invalid_cnpj', 400, 'CNPJ informado não é válido'],
-    ['portal_invalid_parameters', 400, 'Revise o período'],
-  ])('apresenta mensagem pública segura para %s', async (code, status, message) => {
-    const user = userEvent.setup()
-    personMock.mockRejectedValue(new ApiError('conteúdo técnico privado', status, code))
-    renderFeature()
-    await user.click(within(panel('Pessoa jurídica')).getByRole('button', { name: 'Consultar pessoa jurídica' }))
-    expect(await screen.findByRole('alert')).toHaveTextContent(message)
-    expect(screen.queryByText('conteúdo técnico privado')).not.toBeInTheDocument()
+  it('qualifica resultado vazio sem transformar totais desconhecidos em zero', async () => {
+    const user = userEvent.setup(); renderFeature(); await search(user)
+    expect((await screen.findAllByText('Nenhum registro encontrado')).length).toBe(2)
+    expect(screen.queryByText(/de 0/)).not.toBeInTheDocument()
   })
 })
