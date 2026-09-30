@@ -25,4 +25,5 @@ export type PortalResourcesParams = {
   mes_ano_inicio?: string
   mes_ano_fim?: string
   pagina?: number
+  quantidade?: '3' | '10' | '25' | 'todos'
 }

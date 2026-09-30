@@ -9,8 +9,8 @@ describe('cliente do Portal da Transparência via AzData API', () => {
     const controller = new AbortController()
 
     await api.person('00123456000199', controller.signal)
-    await api.resources('00123456000199', {}, controller.signal)
-    await api.resources('00123456000199', { mes_ano_inicio: '01/2025', mes_ano_fim: '02/2025', pagina: 3 }, controller.signal)
+    await api.resources('00123456000199', { quantidade: '3' }, controller.signal)
+    await api.resources('00123456000199', { mes_ano_inicio: '01/2025', mes_ano_fim: '02/2025', pagina: 3, quantidade: 'todos' }, controller.signal)
     await api.contracts('00123456000199', 4, controller.signal)
 
     expect(adapter.mock.calls.map(call => call[0].url)).toEqual([
@@ -19,8 +19,8 @@ describe('cliente do Portal da Transparência via AzData API', () => {
       'api/v1/portal-transparencia/pessoas-juridicas/00123456000199/recursos-recebidos/',
       'api/v1/portal-transparencia/pessoas-juridicas/00123456000199/contratos/',
     ])
-    expect(String(adapter.mock.calls[1][0].params)).toBe('')
-    expect(String(adapter.mock.calls[2][0].params)).toBe('mes_ano_inicio=01%2F2025&mes_ano_fim=02%2F2025&pagina=3')
+    expect(String(adapter.mock.calls[1][0].params)).toBe('quantidade=3')
+    expect(String(adapter.mock.calls[2][0].params)).toBe('mes_ano_inicio=01%2F2025&mes_ano_fim=02%2F2025&pagina=3&quantidade=todos')
     expect(String(adapter.mock.calls[3][0].params)).toBe('pagina=4')
     expect(adapter.mock.calls.every(call => call[0].signal === controller.signal)).toBe(true)
   })

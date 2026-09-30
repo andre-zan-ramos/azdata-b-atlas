@@ -7,6 +7,7 @@ import { formatCnpj, formatDate } from '../utils/format'
 
 const MONTH_YEAR = /^(0[1-9]|1[0-2])\/\d{4}$/
 const personReservedKeys = new Set(['cnpj', 'razaoSocial', 'nomeFantasia', 'indicadores'])
+const resourceGroupedKeys = new Set(['anoMes', 'codigoPessoa', 'nomePessoa', 'tipoPessoa', 'municipioPessoa', 'siglaUFPessoa', 'codigoUG', 'nomeUG', 'codigoOrgao', 'nomeOrgao', 'codigoOrgaoSuperior', 'nomeOrgaoSuperior', 'valor'])
 const booleanLabels: Record<string, string> = {
   favorecidoDespesas: 'Recebeu pagamentos de despesas públicas', possuiContrato: 'Possui contratos com o Governo Federal', possuiContratacao: 'Possui contratação com o Governo Federal', convenios: 'Participa de convênios', favorecidoTransferencias: 'Recebeu transferências de recursos',
   sancionadoCEPIM: 'Consta no cadastro de entidades impedidas (CEPIM)', sancionadoCEIS: 'Consta no cadastro de empresas inidôneas e suspensas (CEIS)', sancionadoCNEP: 'Consta no cadastro de empresas punidas (CNEP)', sancionadoCEAF: 'Consta no cadastro de expulsões da Administração Federal (CEAF)',
@@ -34,7 +35,8 @@ function displayPortalScalar(field: string, value: string | number) {
   if (normalizedField === 'cnpj' && typeof value === 'string') return formatCnpj(value)
   if ((normalizedField.startsWith('data') || normalizedField.includes('vigencia')) && typeof value === 'string') return formatDate(value)
   if (normalizedField.includes('valor')) {
-    const parsed = typeof value === 'number' ? value : Number(value.replace(/\./g, '').replace(',', '.').replace(/\s/g, ''))
+    const compact = typeof value === 'string' ? value.replace(/\s/g, '') : value
+    const parsed = typeof compact === 'number' ? compact : Number(compact.includes(',') ? compact.replace(/\./g, '').replace(',', '.') : compact)
     if (Number.isFinite(parsed)) return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(parsed)
   }
   return String(value)
@@ -65,14 +67,59 @@ function RecordTable({ record, caption, formatContract = false }: { record: Port
   return <div className="portal-table-wrap"><table className="portal-data-table">{caption ? <caption>{caption}</caption> : null}<tbody>{entries.map(([key, value]) => <tr key={key}><th scope="row">{labelFor(key)}</th><td><LiteralValue field={key} value={value} formatContract={formatContract} /></td></tr>)}</tbody></table></div>
 }
 function Records({ records, singular }: { records: PortalRecord[]; singular: string }) { return <div className="portal-records">{records.map((record, index) => <RecordTable key={index} record={record} caption={`${singular} ${index + 1}`} />)}</div> }
+function combinedResourceValue(code: PortalValue | undefined, name: PortalValue | undefined) {
+  const codeText = scalarText(code)
+  const nameText = scalarText(name)
+  if (codeText === 'Não informado') return nameText
+  if (nameText === 'Não informado') return codeText
+  return `${codeText} — ${nameText}`
+}
+function resourceMonth(value: PortalValue | undefined) {
+  const text = scalarText(value)
+  const compact = /^(\d{4})(0[1-9]|1[0-2])$/.exec(text)
+  return compact ? `${compact[2]}/${compact[1]}` : text
+}
+function ResourceRecords({ records }: { records: PortalRecord[] }) {
+  return <div className="portal-records">{records.map((record, index) => {
+    const locality = combinedResourceValue(record.municipioPessoa, record.siglaUFPessoa)
+    const rows: Array<[string, ReactNode]> = [
+      ['Mês de referência', resourceMonth(record.anoMes)],
+      ['Pessoa', combinedResourceValue(record.codigoPessoa, record.nomePessoa)],
+      ['Tipo de pessoa', scalarText(record.tipoPessoa)],
+      ['Localidade', locality],
+      ['Unidade gestora (UG)', combinedResourceValue(record.codigoUG, record.nomeUG)],
+      ['Órgão', combinedResourceValue(record.codigoOrgao, record.nomeOrgao)],
+      ['Órgão superior', combinedResourceValue(record.codigoOrgaoSuperior, record.nomeOrgaoSuperior)],
+      ['Valor', contractSummaryValue('valor', record.valor)],
+    ]
+    const remaining = Object.entries(record).filter(([key]) => !resourceGroupedKeys.has(key))
+    return <div className="portal-table-wrap" key={index}><table className="portal-data-table"><caption>Recurso {index + 1}</caption><tbody>
+      {rows.map(([label, value]) => <tr key={label}><th scope="row">{label}</th><td>{value}</td></tr>)}
+      {remaining.map(([key, value]) => <tr key={key}><th scope="row">{labelFor(key)}</th><td><LiteralValue field={key} value={value} /></td></tr>)}
+    </tbody></table></div>
+  })}</div>
+}
 function nestedRecord(value: PortalValue | undefined) { return value !== null && !Array.isArray(value) && typeof value === 'object' ? value : null }
+function contractSummaryValue(field: string, value: PortalValue | undefined) {
+  const text = scalarText(value)
+  return text === 'Não informado' ? text : displayPortalScalar(field, typeof value === 'number' ? value : text)
+}
 function ContractRecords({ records }: { records: PortalRecord[] }) {
   return <div className="portal-contracts">{records.map((record, index) => {
     const purchase = nestedRecord(record.compra)
     const number = scalarText(record.numero) !== 'Não informado' ? scalarText(record.numero) : scalarText(record.id)
     const status = scalarText(record.situacaoContrato)
     const object = scalarText(record.objeto) !== 'Não informado' ? scalarText(record.objeto) : scalarText(purchase?.objeto)
-    return <details className="portal-contract" key={`${number}-${index}`}><summary><strong>Contrato {number}</strong><span>{status}</span><span title={object}>{object}</span></summary><div className="portal-contract-body"><RecordTable record={record} formatContract /></div></details>
+    const finalValue = contractSummaryValue('valorFinalCompra', record.valorFinalCompra)
+    const validityStart = contractSummaryValue('dataInicioVigencia', record.dataInicioVigencia)
+    const validityEnd = contractSummaryValue('dataFimVigencia', record.dataFimVigencia)
+    return <details className="portal-contract" key={`${number}-${index}`}><summary>
+      <strong>Contrato {number}</strong>
+      <span className="portal-contract-summary-item"><small>Situação</small><span title={status}>{status}</span></span>
+      <span className="portal-contract-summary-item"><small>Valor final</small><span title={finalValue}>{finalValue}</span></span>
+      <span className="portal-contract-summary-item"><small>Vigência</small><span title={`${validityStart} a ${validityEnd}`}>{validityStart} — {validityEnd}</span></span>
+      <span className="portal-contract-summary-item portal-contract-object"><small>Objeto</small><span title={object}>{object}</span></span>
+    </summary><div className="portal-contract-body"><RecordTable record={record} formatContract /></div></details>
   })}</div>
 }
 function portalIndicators(value: PortalValue | undefined): PortalIndicator[] {
@@ -117,9 +164,9 @@ function PersonRecord({ record }: { record: PortalRecord }) {
     {selectedIndicator ? <IndicatorDialog indicator={selectedIndicator} onClose={() => setSelectedIndicator(null)} /> : null}
   </>
 }
-function PageResult({ page, singular, contracts = false }: { page: PortalPage; singular: string; contracts?: boolean }) {
+function PageResult({ page, singular, contracts = false, resources = false }: { page: PortalPage; singular: string; contracts?: boolean; resources?: boolean }) {
   if (!page.results.length) return <div className="portal-state portal-empty"><strong>Nenhum registro encontrado</strong></div>
-  return <><p className="portal-page-summary">Página {page.page} · {page.returned_count} {page.returned_count === 1 ? 'registro' : 'registros'}{page.total_count === null ? '' : ` de ${page.total_count}`}</p>{contracts ? <ContractRecords records={page.results} /> : <Records records={page.results} singular={singular} />}</>
+  return <><p className="portal-page-summary">Página {page.page} · {page.returned_count} {page.returned_count === 1 ? 'registro' : 'registros'}{page.total_count === null ? '' : ` de ${page.total_count}`}</p>{contracts ? <ContractRecords records={page.results} /> : resources ? <ResourceRecords records={page.results} /> : <Records records={page.results} singular={singular} />}</>
 }
 function SectionState({ pending, error, children }: { pending: boolean; error: Error | null; children: ReactNode }) {
   if (pending) return <div className="portal-state" role="status">Consultando esta seção…</div>
@@ -132,20 +179,21 @@ export function PortalTransparenciaEnrichment({ cnpj }: { cnpj: string }) {
   const [started, setStarted] = useState(false)
   const [start, setStart] = useState(defaults.start)
   const [end, setEnd] = useState(defaults.end)
+  const [resourceQuantity, setResourceQuantity] = useState<NonNullable<PortalResourcesParams['quantidade']>>('3')
   const [validation, setValidation] = useState<string | null>(null)
   const person = usePortalMutation<void, PortalRecord>((_, signal) => portalTransparenciaApi.person(cnpj, signal))
   const resources = usePortalMutation<PortalResourcesParams, PortalPage>((values, signal) => portalTransparenciaApi.resources(cnpj, values, signal))
   const contracts = usePortalMutation<void, PortalPage>((_, signal) => portalTransparenciaApi.contracts(cnpj, 1, signal))
   const pending = person.isPending || resources.isPending || contracts.isPending
-  const requestAll = () => { setStarted(true); setValidation(null); person.mutate(); resources.mutate({}); contracts.mutate() }
-  const filterResources = (event: FormEvent) => { event.preventDefault(); const error = validatePortalPeriod(start, end); setValidation(error); if (!error) resources.mutate({ mes_ano_inicio: start, mes_ano_fim: end, pagina: 1 }) }
+  const requestAll = () => { setStarted(true); setValidation(null); person.mutate(); resources.mutate({ quantidade: '3' }); contracts.mutate() }
+  const filterResources = (event: FormEvent) => { event.preventDefault(); const error = validatePortalPeriod(start, end); setValidation(error); if (!error) resources.mutate({ mes_ano_inicio: start, mes_ano_fim: end, pagina: 1, quantidade: resourceQuantity }) }
 
   return <section className="portal-enrichment" aria-labelledby="portal-enrichment-title">
     <header><h2 id="portal-enrichment-title">Portal da Transparência do Governo Federal</h2><p className="hint">Fonte dos dados: <a href="https://api.portaldatransparencia.gov.br/" target="_blank" rel="noreferrer">Portal da Transparência do Governo Federal</a>.</p></header>
     <button className="portal-primary-action" type="button" disabled={pending} onClick={requestAll}>{pending ? 'Buscando dados…' : started ? 'Atualizar dados do Portal' : 'Buscar dados no Portal da Transparência'}</button>
     {!started ? <p className="portal-idle">Nenhum dado do Portal foi solicitado nesta visita.</p> : <div className="portal-sections">
       <article className="portal-panel"><header><h3>Dados da pessoa jurídica</h3></header><SectionState pending={person.isPending} error={person.error}>{person.data ? <PersonRecord record={person.data} /> : null}</SectionState></article>
-      <article className="portal-panel"><header><h3>Recursos recebidos</h3></header><details className="portal-filter"><summary>Filtrar por período</summary><form onSubmit={filterResources} noValidate><div className="portal-controls"><label>Início (MM/AAAA)<input aria-label="Início (MM/AAAA)" value={start} onChange={event => setStart(event.target.value)} inputMode="numeric" /></label><label>Fim (MM/AAAA)<input aria-label="Fim (MM/AAAA)" value={end} onChange={event => setEnd(event.target.value)} inputMode="numeric" /></label></div><button disabled={resources.isPending}>Aplicar período</button></form>{validation ? <div className="portal-state portal-error" role="alert">{validation}</div> : null}</details><SectionState pending={resources.isPending} error={resources.error}>{resources.data ? <PageResult page={resources.data} singular="Recurso" /> : null}</SectionState></article>
+      <article className="portal-panel"><header><h3>Recursos recebidos</h3></header><details className="portal-filter"><summary>Filtrar recursos</summary><form onSubmit={filterResources} noValidate><div className="portal-controls"><label>Início (MM/AAAA)<input aria-label="Início (MM/AAAA)" value={start} onChange={event => setStart(event.target.value)} inputMode="numeric" /></label><label>Fim (MM/AAAA)<input aria-label="Fim (MM/AAAA)" value={end} onChange={event => setEnd(event.target.value)} inputMode="numeric" /></label><label>Quantidade<select aria-label="Quantidade de recursos" value={resourceQuantity} onChange={event => setResourceQuantity(event.target.value as NonNullable<PortalResourcesParams['quantidade']>)}><option value="3">3 recursos</option><option value="10">10 recursos</option><option value="25">25 recursos</option><option value="todos">Todos no período</option></select></label></div><p className="hint">“Todos no período” pode exigir várias páginas da fonte.</p><button disabled={resources.isPending}>Aplicar filtros</button></form>{validation ? <div className="portal-state portal-error" role="alert">{validation}</div> : null}</details><SectionState pending={resources.isPending} error={resources.error}>{resources.data ? <PageResult page={resources.data} singular="Recurso" resources /> : null}</SectionState></article>
       <article className="portal-panel"><header><h3>Contratos</h3></header><SectionState pending={contracts.isPending} error={contracts.error}>{contracts.data ? <PageResult page={contracts.data} singular="Contrato" contracts /> : null}</SectionState></article>
     </div>}
   </section>

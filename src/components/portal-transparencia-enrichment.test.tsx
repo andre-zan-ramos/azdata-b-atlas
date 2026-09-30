@@ -33,14 +33,14 @@ describe('enriquecimento do Portal da Transparência', () => {
     expect(personMock).not.toHaveBeenCalled(); expect(resourcesMock).not.toHaveBeenCalled(); expect(contractsMock).not.toHaveBeenCalled()
     await search(user)
     await waitFor(() => expect(personMock).toHaveBeenCalledWith(cnpj, expect.any(AbortSignal)))
-    expect(resourcesMock).toHaveBeenCalledWith(cnpj, {}, expect.any(AbortSignal))
+    expect(resourcesMock).toHaveBeenCalledWith(cnpj, { quantidade: '3' }, expect.any(AbortSignal))
     expect(contractsMock).toHaveBeenCalledWith(cnpj, 1, expect.any(AbortSignal))
   })
 
   it('exibe as três seções empilhadas e dados simples ou aninhados em tabelas', async () => {
     const user = userEvent.setup()
     personMock.mockResolvedValue({ razaoSocial: 'EMPRESA TESTE', favorecidoDespesas: true, possuiContratacao: true, sancionadoCEIS: false, habilitadoRenunciaFiscal: false, indicadores: [{ key: 'favorecidoDespesas', label: 'Favorecido de despesas', description: 'O Portal sinaliza que a pessoa jurídica consta como favorecida em despesas públicas.', value: true, present: true, source_scope: 'despesas_publicas', reference_date: null }] })
-    contractsMock.mockResolvedValue({ ...emptyPage, returned_count: 1, results: [{ id: 101208736, numero: '232019', situacaoContrato: 'Fechado', objeto: 'Aquisição de ferramenta informatizada', valorInicialCompra: '9.312,00', dataAssinatura: '2025-03-14', compra: { numero: '0007', objeto: 'Aquisição', contato: '' } }] })
+    contractsMock.mockResolvedValue({ ...emptyPage, returned_count: 1, results: [{ id: 101208736, numero: '232019', situacaoContrato: 'Fechado', objeto: 'Aquisição de ferramenta informatizada', valorInicialCompra: '9.312,00', valorFinalCompra: '10.500,50', dataAssinatura: '2025-03-14', dataInicioVigencia: '2025-04-01', dataFimVigencia: '2026-03-31', compra: { numero: '0007', objeto: 'Aquisição', contato: '' } }] })
     renderFeature(); await search(user)
     expect(await screen.findByRole('heading', { name: 'Dados da pessoa jurídica' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Recursos recebidos' })).toBeInTheDocument()
@@ -57,6 +57,8 @@ describe('enriquecimento do Portal da Transparência', () => {
     const contractSummary = contract.querySelector('summary') as HTMLElement
     expect(contract).not.toHaveAttribute('open')
     expect(within(contractSummary).getByText('Fechado')).toBeInTheDocument()
+    expect(within(contractSummary).getByText('R$ 10.500,50')).toBeInTheDocument()
+    expect(within(contractSummary).getByText('01/04/2025 — 31/03/2026')).toBeInTheDocument()
     expect(within(contractSummary).getByText('Aquisição de ferramenta informatizada')).toHaveAttribute('title', 'Aquisição de ferramenta informatizada')
     await user.click(within(contract).getByText('Contrato 232019'))
     expect(contract).toHaveAttribute('open')
@@ -84,15 +86,24 @@ describe('enriquecimento do Portal da Transparência', () => {
   it('solicita e exibe os três recursos mais recentes sem impor período inicial', async () => {
     const user = userEvent.setup()
     resourcesMock.mockResolvedValue({ ...emptyPage, returned_count: 3, results: [
-      { anoMes: '03/2026', valor: '30,00' },
+      { anoMes: 202603, codigoPessoa: '08.747.227/0001-07', nomePessoa: 'ARQUITETURA PROCESSUAL INTELIGENTE LTDA', tipoPessoa: 'Entidades Empresariais Privadas', municipioPessoa: 'FLORIANÓPOLIS', siglaUFPessoa: 'SC', codigoUG: '153163', nomeUG: 'UNIVERSIDADE FEDERAL DE SANTA CATARINA', codigoOrgao: '26246', nomeOrgao: 'Universidade Federal de Santa Catarina', codigoOrgaoSuperior: '26000', nomeOrgaoSuperior: 'Ministério da Educação', valor: '25.09' },
       { anoMes: '02/2026', valor: '20,00' },
       { anoMes: '01/2026', valor: '10,00' },
     ] })
     renderFeature(); await search(user)
-    await waitFor(() => expect(resourcesMock).toHaveBeenCalledWith(cnpj, {}, expect.any(AbortSignal)))
+    await waitFor(() => expect(resourcesMock).toHaveBeenCalledWith(cnpj, { quantidade: '3' }, expect.any(AbortSignal)))
     expect(await screen.findByText('Recurso 1')).toBeInTheDocument()
     expect(screen.getByText('Recurso 2')).toBeInTheDocument()
     expect(screen.getByText('Recurso 3')).toBeInTheDocument()
+    const firstResource = screen.getByText('Recurso 1').closest('table') as HTMLElement
+    expect(within(firstResource).getByText('03/2026')).toBeInTheDocument()
+    expect(within(firstResource).getByText('R$ 25,09')).toBeInTheDocument()
+    expect(within(firstResource).getByText('153163 — UNIVERSIDADE FEDERAL DE SANTA CATARINA')).toBeInTheDocument()
+    expect(within(firstResource).getByText('26246 — Universidade Federal de Santa Catarina')).toBeInTheDocument()
+    expect(within(firstResource).getByText('26000 — Ministério da Educação')).toBeInTheDocument()
+    expect(within(firstResource).getByText('FLORIANÓPOLIS — SC')).toBeInTheDocument()
+    expect(within(firstResource).queryByText('Código UG')).not.toBeInTheDocument()
+    expect(within(firstResource).queryByText('Nome UG')).not.toBeInTheDocument()
   })
 
   it('preserva códigos e valores monetários literais, mas apresenta booleanos como Sim e Não', async () => {
@@ -107,12 +118,17 @@ describe('enriquecimento do Portal da Transparência', () => {
     const user = userEvent.setup(); renderFeature(); await search(user)
     await screen.findByText('00.123.456/0001-99')
     const resources = within(section('Recursos recebidos'))
-    expect(resources.getByText('Filtrar por período').closest('details')).not.toHaveAttribute('open')
-    await user.click(resources.getByText('Filtrar por período'))
+    expect(resources.getByText('Filtrar recursos').closest('details')).not.toHaveAttribute('open')
+    await user.click(resources.getByText('Filtrar recursos'))
+    expect(resources.getByLabelText('Quantidade de recursos')).toHaveValue('3')
+    await user.selectOptions(resources.getByLabelText('Quantidade de recursos'), '10')
     await user.clear(resources.getByLabelText('Início (MM/AAAA)')); await user.type(resources.getByLabelText('Início (MM/AAAA)'), '13/2025')
-    await user.click(resources.getByRole('button', { name: 'Aplicar período' }))
+    await user.click(resources.getByRole('button', { name: 'Aplicar filtros' }))
     expect(resources.getByRole('alert')).toHaveTextContent('formato MM/AAAA')
     expect(resourcesMock).toHaveBeenCalledTimes(1)
+    await user.clear(resources.getByLabelText('Início (MM/AAAA)')); await user.type(resources.getByLabelText('Início (MM/AAAA)'), '01/2025')
+    await user.click(resources.getByRole('button', { name: 'Aplicar filtros' }))
+    await waitFor(() => expect(resourcesMock).toHaveBeenLastCalledWith(cnpj, { mes_ano_inicio: '01/2025', mes_ano_fim: expect.any(String), pagina: 1, quantidade: '10' }, expect.any(AbortSignal)))
   })
 
   it('qualifica resultado vazio sem transformar totais desconhecidos em zero', async () => {
