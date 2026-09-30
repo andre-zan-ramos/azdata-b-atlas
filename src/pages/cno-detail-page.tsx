@@ -12,7 +12,7 @@ import { internalReturnTo } from '../utils/navigation'
 
 type Collection = 'areas' | 'cnaes' | 'vinculos' | 'obras_vinculadas'
 type Child = Area | Cnae | WorkLink | WorkSummary
-type WorkScalarKey = Exclude<keyof WorkSummary, 'geolocation'>
+type WorkScalarKey = Exclude<keyof WorkSummary, 'geolocation' | 'campos_correspondencia'>
 const collections: [Collection, string][] = [['areas', 'Áreas'], ['cnaes', 'CNAEs'], ['vinculos', 'Vínculos'], ['obras_vinculadas', 'Obras vinculadas']]
 const sections: [string, (WorkScalarKey | 'codigo_pais' | 'pais' | 'data_inicio_obra' | 'data_inicio_responsabilidade' | 'data_registro' | 'cno_vinculado' | 'caixa_postal' | 'unidade_medida' | 'area_total' | 'codigo_localizacao')[]][] = [
   ['Identificação', ['id', 'cno', 'nome', 'nome_empresarial', 'cno_vinculado']],

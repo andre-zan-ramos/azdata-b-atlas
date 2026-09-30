@@ -5,7 +5,7 @@ import { adaptPage, readSearch } from './navigation'
 
 describe('contrato CNO', () => {
   it('usa allowlist por endpoint sem transformar identificadores', () => {
-    expect(serializeParams('obras', { cno: '00.01', ni_responsavel: ' 000-X ', uf: '', data_inicio_obra_de: '2024-02-29', data_inicio_obra_ate: '2024-03-01', q: 'não', release: 'x', return_to: '/', page: 1, include_total: false }).toString()).toBe('cno=00.01&ni_responsavel=+000-X+&data_inicio_obra_de=2024-02-29&data_inicio_obra_ate=2024-03-01&page=1&include_total=false')
+    expect(serializeParams('obras', { q: '000001', cno: '00.01', ni_responsavel: ' 000-X ', uf: '', data_inicio_obra_de: '2024-02-29', data_inicio_obra_ate: '2024-03-01', release: 'x', return_to: '/', page: 1, include_total: false }).toString()).toBe('q=000001&cno=00.01&ni_responsavel=+000-X+&data_inicio_obra_de=2024-02-29&data_inicio_obra_ate=2024-03-01&page=1&include_total=false')
     expect(serializeParams('areas', { cno: '001', cnae: '22', ni_responsavel: 'x' }).toString()).toBe('cno=001')
     expect(serializeParams('cnaes', { cno: '001', cnae: '022', ni_responsavel: 'x' }).toString()).toBe('cno=001&cnae=022')
     expect(serializeParams('vinculos', { cno: '001', ni_responsavel: 'X', situacao: '2' }).toString()).toBe('cno=001&ni_responsavel=X')
@@ -43,8 +43,8 @@ describe('contrato CNO', () => {
     expect(Object.keys(readSearch(new URLSearchParams(query), 'obras').errors).length).toBeGreaterThan(0)
   })
   it('não envia estado de interface nem conta automaticamente', () => {
-    const result = readSearch(new URLSearchParams('cno=000-X&listar=true&return_to=/&q=nome'), 'obras')
-    expect(result.params).toEqual({ cno: '000-X', page: 1, page_size: 10 })
+    const result = readSearch(new URLSearchParams('cno=000-X&listar=true&return_to=/&q=000001'), 'obras')
+    expect(result.params).toEqual({ q: '000001', cno: '000-X', page: 1, page_size: 10 })
     expect(result.active).toBe(true)
     expect(readSearch(new URLSearchParams(), 'obras').active).toBe(false)
   })

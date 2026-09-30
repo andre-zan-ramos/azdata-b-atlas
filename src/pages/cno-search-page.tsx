@@ -31,6 +31,7 @@ export function CnoSearchPage() {
   const queryClient = useQueryClient()
   const { filters, params, errors: urlErrors, active } = readSearch(search, 'obras')
   const [draft, setDraft] = useState<Record<string, string>>(filters)
+  const [searchInput, setSearchInput] = useState(filters.q ?? '')
   const [municipalitySearch, setMunicipalitySearch] = useState('')
   const [municipalityOpen, setMunicipalityOpen] = useState(false)
   const [activeMunicipality, setActiveMunicipality] = useState(0)
@@ -41,10 +42,12 @@ export function CnoSearchPage() {
   const municipalityOptions = (municipalities.data ?? []).filter(item => item.nome.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().includes(municipalitySearch.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase())).slice(0, 30)
   const applied = JSON.stringify(filters)
   useEffect(() => { setDraft(JSON.parse(applied) as Record<string, string>) }, [applied])
+  useEffect(() => { setSearchInput(filters.q ?? '') }, [filters.q])
   useEffect(() => { if (draft.codigo_municipio && selectedMunicipality) setMunicipalitySearch(selectedMunicipality.nome) }, [selectedMunicipality, draft.codigo_municipio])
   const invalid = Object.keys(urlErrors).length > 0
+  const queryActive = mode === 'mapa' ? active : Boolean(filters.q)
   const query = useQuery<Page<WorkSummary>>({
-    ...cnoQueryOptions, queryKey: ['cno', 'obras', params], enabled: mode === 'mapa' && active && !invalid,
+    ...cnoQueryOptions, queryKey: ['cno', 'obras', params], enabled: queryActive && !invalid,
     queryFn: ({ signal }) => cnoApi.obras(params, signal),
   })
   const errors = { ...(query.error instanceof ApiError ? query.error.fields : {}), ...urlErrors }
@@ -75,6 +78,18 @@ export function CnoSearchPage() {
     else setSearch(next)
   }
   const submit = (event: FormEvent) => { event.preventDefault(); apply() }
+  const submitSearch = (event: FormEvent) => {
+    event.preventDefault()
+    const next = new URLSearchParams()
+    next.set('modo', 'busca')
+    const value = searchInput.trim()
+    if (value) next.set('q', value)
+    next.set('page', '1')
+    next.set('page_size', String([10, 25, 50].includes(params.page_size!) ? params.page_size : 10))
+    const back = search.get('return_to')
+    if (back) next.set('return_to', internalReturnTo(back, '/receita-federal/cno'))
+    setSearch(next)
+  }
   const changePage = (page: number) => { const next = new URLSearchParams(search); next.set('page', String(page)); setSearch(next) }
   const field = (key: string, type = 'text') => <label key={key} htmlFor={`cno-${key}`}>{fieldLabels[key]}<input id={`cno-${key}`} name={key} type={type} aria-label={fieldLabels[key]} value={draft[key] ?? ''} onChange={event => setDraft(current => ({ ...current, [key]: event.target.value }))} aria-invalid={Boolean(errors[key])} aria-describedby={errors[key] ? `cno-${key}-error` : undefined} />{errors[key] && <span className="field-error" id={`cno-${key}-error`}>{errors[key].join(' ')}</span>}</label>
   const selectState = (code: string) => {
@@ -94,18 +109,25 @@ export function CnoSearchPage() {
   }
 
   const resultContent = <>
-    <div className="cno-page-controls"><label>Resultados por página<select aria-label="Resultados por página" aria-invalid={Boolean(errors.page_size)} aria-describedby={errors.page_size ? 'cno-size-error' : undefined} value={params.page_size} onChange={event => { const next = new URLSearchParams(search); next.set('page_size', event.target.value); next.set('page', '1'); setSearch(next) }}>{[10, 25, 50].map(size => <option key={size} value={size}>{size}</option>)}</select>{errors.page_size && <span id="cno-size-error" className="field-error">{errors.page_size.join(' ')}</span>}</label></div>
-    {!active && !invalid && <p className="inline-message">Informe um identificador ou use os filtros para pesquisar.</p>}
-    {query.isFetching && active && !invalid && <p role="status">Buscando…</p>}
-    {error && <QueryError error={error} retry={() => { if (!invalid) void query.refetch() }} />}
-    {active && view && <>{view.results.length === 0 ? <Empty /> : <WorkTable items={view.results} returnTo={returnTo} />}<Pagination page={view.page} pageSize={view.pageSize} count={view.count} previous={view.hasPrevious && view.page > 1} next={view.hasNext && view.page < 999999999} onPage={changePage} /></>}
+    {(mode === 'mapa' || queryActive) && <div className="cno-page-controls"><label>Resultados por página<select aria-label="Resultados por página" aria-invalid={Boolean(errors.page_size)} aria-describedby={errors.page_size ? 'cno-size-error' : undefined} value={params.page_size} onChange={event => { const next = new URLSearchParams(search); next.set('page_size', event.target.value); next.set('page', '1'); setSearch(next) }}>{[10, 25, 50].map(size => <option key={size} value={size}>{size}</option>)}</select>{errors.page_size && <span id="cno-size-error" className="field-error">{errors.page_size.join(' ')}</span>}</label></div>}
+    {!queryActive && !invalid && mode === 'mapa' && <p className="inline-message">Informe um identificador ou use os filtros para pesquisar.</p>}
+    {query.isFetching && queryActive && !invalid && <p role="status">Buscando…</p>}
+    {error && !(mode === 'busca' && errors.q) && <QueryError error={error} retry={() => { if (!invalid) void query.refetch() }} />}
+    {queryActive && view && <>{view.results.length === 0 ? <Empty /> : <WorkTable items={view.results} returnTo={returnTo} />}<Pagination page={view.page} pageSize={view.pageSize} count={view.count} previous={view.hasPrevious && view.page > 1} next={view.hasNext && view.page < 999999999} onPage={changePage} /></>}
   </>
 
   return <section className="search-page cno-page">
     {search.has('return_to') && <Link className="back-link" to={internalReturnTo(search.get('return_to'), '/receita-federal/cno')}>Voltar à consulta anterior</Link>}
     <div className="page-heading"><h1>Obras</h1></div>
-    <AreaModeSwitcher mode={mode} compatibleKeys={['cno', 'ni_responsavel', 'return_to']} />
-    {mode === 'busca' ? <section className="mode-placeholder" aria-labelledby="works-search-title"><h2 id="works-search-title">Busca de obras</h2><p>A busca compacta por CNO ou responsável será disponibilizada quando o contrato correspondente da API estiver publicado. Use o modo Mapa para a exploração territorial atual.</p></section> : <>
+    <AreaModeSwitcher mode={mode} compatibleKeys={['return_to']} />
+    {mode === 'busca' ? <>
+      <form className={`unified-search${filters.q ? ' compact' : ''}`} onSubmit={submitSearch} role="search">
+        <label htmlFor="work-search">Encontre uma obra</label>
+        <div className="search-row"><input id="work-search" name="q" value={searchInput} onChange={event => setSearchInput(event.target.value)} autoFocus aria-invalid={Boolean(errors.q)} aria-describedby={errors.q ? 'work-search-error' : 'work-search-help'} placeholder="Digite o CNO ou o NI do responsável" /><button>Buscar</button></div>
+        {errors.q ? <p className="field-error" id="work-search-error">{errors.q.join(' ')}</p> : <p id="work-search-help">A busca compara literalmente o valor com CNO e NI do responsável. Zeros à esquerda e pontuação são significativos.</p>}
+      </form>
+      {resultContent}
+    </> : <>
     <div className="cno-explorer">
     <form className="filter-card" onSubmit={submit} role="search" aria-label="Pesquisa de obras">
         <div className="cno-primary-grid">

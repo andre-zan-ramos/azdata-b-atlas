@@ -4,7 +4,7 @@ import { ApiError } from '../../errors'
 import type { Area, Cnae, CnoMunicipality, LinkFilters, MunicipalityFilters, Page, PaginationParams, WorkDetail, WorkFilters, WorkGeolocationRequestResult, WorkLink, WorkSummary } from './types'
 
 export const filterKeys = {
-  obras: ['cno', 'ni_responsavel', 'uf', 'codigo_municipio', 'situacao', 'cnae', 'cno_vinculado', 'data_inicio_obra_de', 'data_inicio_obra_ate'],
+  obras: ['q', 'cno', 'ni_responsavel', 'uf', 'codigo_municipio', 'situacao', 'cnae', 'cno_vinculado', 'data_inicio_obra_de', 'data_inicio_obra_ate'],
   areas: ['cno'], cnaes: ['cno', 'cnae'], vinculos: ['cno', 'ni_responsavel'], municipios: ['uf', 'nome'],
 } as const
 export type Endpoint = keyof typeof filterKeys

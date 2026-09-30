@@ -3,7 +3,7 @@ export interface CountedPage<T> { count: number; next: string | null; previous: 
 export interface FastPage<T> extends Omit<CountedPage<T>, 'count'> { count: null; page: number; page_size: PageSize; has_next: boolean; has_previous: boolean }
 export type Page<T> = CountedPage<T> | FastPage<T>
 export interface PaginationParams { page?: number; page_size?: PageSize; include_total?: boolean }
-export interface WorkFilters extends PaginationParams { cno?: string; ni_responsavel?: string; uf?: string; codigo_municipio?: string; situacao?: string; cnae?: string; cno_vinculado?: string; data_inicio_obra_de?: string; data_inicio_obra_ate?: string }
+export interface WorkFilters extends PaginationParams { q?: string; cno?: string; ni_responsavel?: string; uf?: string; codigo_municipio?: string; situacao?: string; cnae?: string; cno_vinculado?: string; data_inicio_obra_de?: string; data_inicio_obra_ate?: string }
 export interface LinkFilters extends PaginationParams { cno?: string; ni_responsavel?: string }
 export interface MunicipalityFilters extends PaginationParams { uf?: string; nome?: string }
 export interface CnoMunicipality { nome: string; uf: string; codigo_tom: string; codigo_ibge: string | null }
@@ -19,6 +19,7 @@ export interface WorkSummary {
   logradouro: string | null; numero: string | null; bairro: string | null;
   complemento: string | null; cep: string | null; release: string;
   geolocation?: WorkGeolocation;
+  campos_correspondencia?: Array<'cno' | 'ni_responsavel'>;
 }
 export interface Area { id: number; cno: string | null; categoria: string | null; destinacao: string | null; tipo_construcao: string | null; tipo_area: string | null; tipo_area_complementar: string | null; metragem: string | null }
 export interface Cnae { id: number; cno: string | null; cnae: string | null; data_registro_cnae: string | null }
