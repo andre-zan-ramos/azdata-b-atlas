@@ -29,7 +29,8 @@
 .cno-municipality-options button { display: block; width: 100%; padding: 8px 10px; text-align: left; background: white; color: var(--brand); font-weight: 400; }
 .cno-municipality-options button:hover, .cno-municipality-options button[data-active="true"], .cno-municipality-options button[aria-selected="true"] { background: #e8f2ec; }
 .cno-municipality-options span { display: block; padding: 8px; color: var(--muted); }
-.cno-filter-note, .cno-map-caption { margin: 10px 0 0; color: var(--muted); font-size: 12px; }
+.cno-filter-note, .cno-map-caption, .cno-map-coverage { margin: 10px 0 0; color: var(--muted); font-size: 12px; }
+.cno-map-coverage { color: var(--text); }
 .cno-map-refresh { padding: 2px 4px; background: transparent; color: var(--brand); font-size: 12px; text-decoration: underline; text-underline-offset: 3px; }
 .cno-map-card { margin-top: 18px; padding: 16px; border: 1px solid var(--line); border-radius: 9px; background: white; }
 .cno-map-heading { display: flex; align-items: start; justify-content: space-between; gap: 12px; margin-bottom: 12px; }

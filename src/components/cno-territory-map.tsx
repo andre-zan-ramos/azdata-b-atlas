@@ -2,8 +2,9 @@ import { useQuery } from '@tanstack/react-query'
 import L from 'leaflet'
 import { useEffect } from 'react'
 import { CircleMarker, GeoJSON, MapContainer, Popup, TileLayer, useMap } from 'react-leaflet'
+import { Link } from 'react-router'
 import { getMesh, type Mesh } from '../api/ibge/territories'
-import type { WorkSummary } from '../api/receita-federal/cno/types'
+import type { WorkMapPoint } from '../api/receita-federal/cno/types'
 import 'leaflet/dist/leaflet.css'
 
 function Fit({ mesh, selectedMunicipalityIbge }: { mesh: Mesh; selectedMunicipalityIbge: string | null }) {
@@ -16,8 +17,8 @@ function Fit({ mesh, selectedMunicipalityIbge }: { mesh: Mesh; selectedMunicipal
   return null
 }
 
-export function CnoTerritoryMap({ uf, onState, onMunicipality, names, selectedMunicipalityIbge, works }: {
-  uf: string; onState: (uf: string) => void; onMunicipality: (code: string) => void; names: Map<string, string>; selectedMunicipalityIbge: string | null; works: WorkSummary[]
+export function CnoTerritoryMap({ uf, onState, onMunicipality, names, selectedMunicipalityIbge, works, returnTo }: {
+  uf: string; onState: (uf: string) => void; onMunicipality: (code: string) => void; names: Map<string, string>; selectedMunicipalityIbge: string | null; works: WorkMapPoint[]; returnTo: string
 }) {
   const mesh = useQuery({ queryKey: ['ibge', 'cno-mesh', uf], queryFn: ({ signal }) => getMesh(uf || undefined, signal), staleTime: 86400000, retry: false })
   if (mesh.isPending) return <p role="status" className="cno-map-state">Carregando mapa do IBGE…</p>
@@ -51,7 +52,7 @@ export function CnoTerritoryMap({ uf, onState, onMunicipality, names, selectedMu
     {works.flatMap(work => {
       const geo = work.geolocation
       if (geo?.status !== 'available' || geo.stale || geo.reason === 'context_mismatch' || geo.precision !== 'postal_code_approximation' || geo.latitude === null || geo.longitude === null) return []
-      return <CircleMarker key={work.id} center={[geo.latitude, geo.longitude]} radius={7} pathOptions={{ color: '#173f37', fillColor: '#eeb64b', fillOpacity: 1 }}><Popup><strong>CNO {work.cno ?? 'não informado'}</strong><br />{work.nome || work.nome_empresarial || 'Obra sem nome'}<br /><small>Localização aproximada pelo CEP</small></Popup></CircleMarker>
+      return <CircleMarker key={work.id} center={[geo.latitude, geo.longitude]} radius={7} pathOptions={{ color: '#173f37', fillColor: '#eeb64b', fillOpacity: 1 }}><Popup><strong>CNO {work.cno ?? 'não informado'}</strong><br />{work.nome || work.nome_empresarial || 'Obra sem nome'}<br />{work.municipio ?? 'Município não informado'} / {work.uf ?? 'UF não informada'}<br /><small>Localização aproximada pelo CEP</small><br /><Link to={`/receita-federal/cno/obras/${work.id}?return_to=${encodeURIComponent(returnTo)}`}>Abrir ocorrência</Link></Popup></CircleMarker>
     })}
   </MapContainer>
 }

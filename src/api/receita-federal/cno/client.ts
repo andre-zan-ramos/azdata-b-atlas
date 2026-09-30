@@ -1,7 +1,7 @@
 import type { AxiosInstance } from 'axios'
 import { apiClient } from '../../client'
 import { ApiError } from '../../errors'
-import type { Area, Cnae, CnoMunicipality, LinkFilters, MunicipalityFilters, Page, PaginationParams, WorkDetail, WorkFilters, WorkGeolocationRequestResult, WorkLink, WorkSummary } from './types'
+import type { Area, Cnae, CnoMunicipality, LinkFilters, MunicipalityFilters, Page, PaginationParams, WorkDetail, WorkFilters, WorkGeolocationRequestResult, WorkLink, WorkMapFilters, WorkMapResponse, WorkSummary } from './types'
 
 export const filterKeys = {
   obras: ['q', 'cno', 'ni_responsavel', 'uf', 'codigo_municipio', 'situacao', 'cnae', 'cno_vinculado', 'data_inicio_obra_de', 'data_inicio_obra_ate'],
@@ -27,6 +27,19 @@ export function createCnoApi(client: AxiosInstance = apiClient) {
   const list = async <T>(endpoint: Endpoint, params: object, signal?: AbortSignal) => (await client.get<Page<T>>(`api/v1/receita-federal/cno/${endpoint}/`, { params: serializeParams(endpoint, params), signal })).data
   return {
     obras: (params: WorkFilters, signal?: AbortSignal) => list<WorkSummary>('obras', params, signal),
+    mapa: async (params: WorkMapFilters, signal?: AbortSignal) => {
+      const query = new URLSearchParams()
+      for (const key of filterKeys.obras) {
+        if (key === 'q') continue
+        const value = params[key]
+        if (value !== undefined && value !== '') query.set(key, value)
+      }
+      if (params.limit !== undefined) {
+        if (!Number.isInteger(params.limit) || params.limit < 1) throw new ApiError('Revise os campos informados.', 400, undefined, { limit: ['Use um inteiro positivo.'] })
+        query.set('limit', String(params.limit))
+      }
+      return (await client.get<WorkMapResponse>('api/v1/receita-federal/cno/obras/mapa/', { params: query, signal })).data
+    },
     areas: (params: PaginationParams & { cno?: string }, signal?: AbortSignal) => list<Area>('areas', params, signal),
     cnaes: (params: PaginationParams & { cno?: string; cnae?: string }, signal?: AbortSignal) => list<Cnae>('cnaes', params, signal),
     vinculos: (params: LinkFilters, signal?: AbortSignal) => list<WorkLink>('vinculos', params, signal),

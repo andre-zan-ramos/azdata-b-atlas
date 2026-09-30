@@ -4,6 +4,7 @@ export interface FastPage<T> extends Omit<CountedPage<T>, 'count'> { count: null
 export type Page<T> = CountedPage<T> | FastPage<T>
 export interface PaginationParams { page?: number; page_size?: PageSize; include_total?: boolean }
 export interface WorkFilters extends PaginationParams { q?: string; cno?: string; ni_responsavel?: string; uf?: string; codigo_municipio?: string; situacao?: string; cnae?: string; cno_vinculado?: string; data_inicio_obra_de?: string; data_inicio_obra_ate?: string }
+export type WorkMapFilters = Omit<WorkFilters, keyof PaginationParams | 'q'> & { limit?: number }
 export interface LinkFilters extends PaginationParams { cno?: string; ni_responsavel?: string }
 export interface MunicipalityFilters extends PaginationParams { uf?: string; nome?: string }
 export interface CnoMunicipality { nome: string; uf: string; codigo_tom: string; codigo_ibge: string | null }
@@ -11,6 +12,16 @@ export type WorkGeolocationStatus = 'not_requested' | 'pending' | 'available' | 
 export type WorkGeolocationReason = 'cep_missing' | 'cep_invalid' | 'not_found' | 'no_coordinates' | 'context_mismatch' | 'load_in_progress' | 'producer_unavailable' | 'provider_unavailable' | 'feature_disabled'
 export interface WorkGeolocation { status: WorkGeolocationStatus; reason: WorkGeolocationReason | null; precision: 'postal_code_approximation' | null; latitude: number | null; longitude: number | null; source: string | null; observed_at: string | null; stale: boolean }
 export interface WorkGeolocationRequestResult { id: number; geolocation: WorkGeolocation }
+export interface WorkMapPoint {
+  id: number; cno: string | null; nome: string | null; nome_empresarial: string | null;
+  municipio: string | null; uf: string | null; release: string; source_file_id: number;
+  geolocation: WorkGeolocation;
+}
+export interface WorkMapResponse {
+  release: string | null; source_file_id: number | null; filters: Record<string, string>;
+  coverage: { results_total: number; points_total: number; without_coordinates_total: number; returned_points: number; limit: number; maximum_limit: number; truncated: boolean; points_match_results: true };
+  points: WorkMapPoint[];
+}
 export interface WorkSummary {
   id: number; cno: string | null; nome: string | null; nome_empresarial: string | null;
   ni_responsavel: string | null; qualificacao_responsavel: string | null;

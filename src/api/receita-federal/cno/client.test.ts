@@ -17,18 +17,19 @@ describe('contrato CNO', () => {
   it.each([10, 25, 50])('aceita tamanho %s e o limite da página', page_size => {
     expect(serializeParams('obras', { page_size, page: 999999999 }).get('page_size')).toBe(String(page_size))
   })
-  it('usa as seis rotas, propaga signal e nunca envia query no detalhe', async () => {
+  it('usa as sete rotas, propaga signal e nunca envia query no detalhe', async () => {
     const data = { cno: '0001', ni_responsavel: '00-X', area_total: '1.000,00', nome: '', municipio: null }
     const adapter = vi.fn<AxiosAdapter>(async config => ({ data, status: 200, statusText: 'OK', headers: {}, config }))
     const api = createCnoApi(axios.create({ baseURL: 'https://configurada.example/', adapter }))
     const signal = new AbortController().signal
-    await api.obras({ cno: '0001' }, signal); await api.areas({ cno: '0001' }, signal); await api.cnaes({ cnae: '001' }, signal); await api.vinculos({ ni_responsavel: '00-X' }, signal); await api.municipios({ uf: 'MG', nome: 'Belo' }, signal)
+    await api.obras({ cno: '0001' }, signal); await api.mapa({ cno: '0001', uf: 'MG', limit: 2000 }, signal); await api.areas({ cno: '0001' }, signal); await api.cnaes({ cnae: '001' }, signal); await api.vinculos({ ni_responsavel: '00-X' }, signal); await api.municipios({ uf: 'MG', nome: 'Belo' }, signal)
     expect(await api.obra('0123', signal)).toEqual(data)
-    expect(adapter.mock.calls.map(([config]) => config.url)).toEqual(['obras/', 'areas/', 'cnaes/', 'vinculos/', 'municipios/', 'obras/0123/'].map(path => `api/v1/receita-federal/cno/${path}`))
+    expect(adapter.mock.calls.map(([config]) => config.url)).toEqual(['obras/', 'obras/mapa/', 'areas/', 'cnaes/', 'vinculos/', 'municipios/', 'obras/0123/'].map(path => `api/v1/receita-federal/cno/${path}`))
     expect(adapter.mock.calls.every(([config]) => config.signal === signal && config.baseURL === 'https://configurada.example/')).toBe(true)
-    expect(adapter.mock.calls[5][0].params).toBeUndefined()
+    expect(adapter.mock.calls[1][0].params?.toString()).toBe('cno=0001&uf=MG&limit=2000')
+    expect(adapter.mock.calls[6][0].params).toBeUndefined()
     await expect(api.obra('../x')).rejects.toMatchObject({ status: 404 })
-    expect(adapter).toHaveBeenCalledTimes(6)
+    expect(adapter).toHaveBeenCalledTimes(7)
   })
   it('solicita geolocalização das ocorrências em lote e preserva o AbortSignal', async () => {
     const adapter = vi.fn<AxiosAdapter>(async config => ({ data: { results: [] }, status: 202, statusText: 'Accepted', headers: {}, config }))

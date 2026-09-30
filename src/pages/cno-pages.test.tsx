@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { cnoApi } from '../api/receita-federal/cno/client'
 import { listStates } from '../api/ibge/territories'
 import { ApiError } from '../api/errors'
-import type { Page, WorkSummary } from '../api/receita-federal/cno/types'
+import type { Page, WorkMapPoint, WorkSummary } from '../api/receita-federal/cno/types'
 import { Providers } from '../app/providers'
 import { area, detail, fastPage, link, work } from '../test/cno-fixtures'
 import { CnoSearchPage } from './cno-search-page'
@@ -15,9 +15,9 @@ vi.mock('../api/ibge/territories', () => ({
   listStates: vi.fn().mockResolvedValue([{ id: 31, sigla: 'MG', nome: 'Minas Gerais' }]),
   getMesh: vi.fn().mockResolvedValue({ type: 'FeatureCollection', features: [] }),
 }))
-vi.mock('../components/cno-territory-map', () => ({ CnoTerritoryMap: ({ uf, onState, onMunicipality, selectedMunicipalityIbge, works }: { uf: string; onState: (code: string) => void; onMunicipality: (code: string) => void; selectedMunicipalityIbge: string | null; works: WorkSummary[] }) => <div data-testid="territory-map" data-selected={selectedMunicipalityIbge ?? ''} data-points={works.filter(item => item.geolocation?.status === 'available').length}><button type="button" onClick={() => onState('31')}>Mapa MG</button>{uf && <button type="button" onClick={() => onMunicipality('3106200')}>Mapa Belo Horizonte</button>}</div> }))
+vi.mock('../components/cno-territory-map', () => ({ CnoTerritoryMap: ({ uf, onState, onMunicipality, selectedMunicipalityIbge, works }: { uf: string; onState: (code: string) => void; onMunicipality: (code: string) => void; selectedMunicipalityIbge: string | null; works: WorkMapPoint[] }) => <div data-testid="territory-map" data-selected={selectedMunicipalityIbge ?? ''} data-points={works.length}><button type="button" onClick={() => onState('31')}>Mapa MG</button>{uf && <button type="button" onClick={() => onMunicipality('3106200')}>Mapa Belo Horizonte</button>}</div> }))
 
-vi.mock('../api/receita-federal/cno/client', async importOriginal => ({ ...await importOriginal<typeof import('../api/receita-federal/cno/client')>(), cnoApi: { obras: vi.fn(), obra: vi.fn(), areas: vi.fn(), cnaes: vi.fn(), vinculos: vi.fn(), municipios: vi.fn(), requestWorkGeolocations: vi.fn() } }))
+vi.mock('../api/receita-federal/cno/client', async importOriginal => ({ ...await importOriginal<typeof import('../api/receita-federal/cno/client')>(), cnoApi: { obras: vi.fn(), mapa: vi.fn(), obra: vi.fn(), areas: vi.fn(), cnaes: vi.fn(), vinculos: vi.fn(), municipios: vi.fn(), requestWorkGeolocations: vi.fn() } }))
 const api = vi.mocked(cnoApi)
 function Location() {
   const location = useLocation(), navigate = useNavigate()
@@ -42,6 +42,7 @@ beforeEach(() => {
   vi.mocked(listStates).mockResolvedValue([{ id: 31, sigla: 'MG', nome: 'Minas Gerais' }])
   api.municipios.mockResolvedValue(fastPage([{ nome: 'Belo Horizonte', uf: 'MG', codigo_tom: '4123', codigo_ibge: '3106200' }]))
   api.obras.mockResolvedValue(fastPage([work, { ...work, id: 43 }], 1, true))
+  api.mapa.mockResolvedValue({ release: '2026-09', source_file_id: 17, filters: {}, coverage: { results_total: 2, points_total: 0, without_coordinates_total: 2, returned_points: 0, limit: 2000, maximum_limit: 5000, truncated: false, points_match_results: true }, points: [] })
   api.obra.mockResolvedValue(detail)
   api.areas.mockResolvedValue(fastPage([{ ...area, id: 11 }], 2))
   api.cnaes.mockResolvedValue(fastPage([], 2))
@@ -66,10 +67,12 @@ describe('pesquisas CNO', () => {
     await screen.findByRole('option', { name: 'MG · Minas Gerais' })
     await user.click(screen.getByRole('button', { name: 'Mapa MG' }))
     await waitFor(() => expect(api.obras).toHaveBeenCalledWith({ uf: 'MG', page: 1, page_size: 10 }, expect.any(AbortSignal)))
+    await waitFor(() => expect(api.mapa).toHaveBeenCalledWith({ uf: 'MG' }, expect.any(AbortSignal)))
     await waitFor(() => expect(screen.getByRole('combobox', { name: 'Município' })).toBeEnabled())
     await waitFor(() => expect(screen.getByRole('button', { name: 'Mapa Belo Horizonte' })).toBeInTheDocument())
     await user.click(screen.getByRole('button', { name: 'Mapa Belo Horizonte' }))
     await waitFor(() => expect(api.obras).toHaveBeenLastCalledWith({ uf: 'MG', codigo_municipio: '4123', page: 1, page_size: 10 }, expect.any(AbortSignal)))
+    await waitFor(() => expect(api.mapa).toHaveBeenLastCalledWith({ uf: 'MG', codigo_municipio: '4123' }, expect.any(AbortSignal)))
     await waitFor(() => expect(screen.getByTestId('territory-map')).toHaveAttribute('data-selected', '3106200'))
     expect(screen.getByRole('heading', { name: 'Belo Horizonte' })).toBeInTheDocument()
   })
@@ -83,9 +86,19 @@ describe('pesquisas CNO', () => {
   it('entrega ao mapa os pontos disponíveis sem solicitar estados resolvidos', async () => {
     const available = { status: 'available', reason: null, precision: 'postal_code_approximation', latitude: -19.9, longitude: -43.9, source: 'provider', observed_at: '2026-09-28T12:00:00Z', stale: false } as const
     api.obras.mockResolvedValue(fastPage([{ ...work, geolocation: available }]))
+    api.mapa.mockResolvedValue({ release: '2026-09', source_file_id: 17, filters: { uf: 'MG', codigo_municipio: '4123' }, coverage: { results_total: 1, points_total: 1, without_coordinates_total: 0, returned_points: 1, limit: 2000, maximum_limit: 5000, truncated: false, points_match_results: true }, points: [{ id: work.id, cno: work.cno, nome: work.nome, nome_empresarial: work.nome_empresarial, municipio: work.municipio, uf: work.uf, release: work.release, source_file_id: 17, geolocation: available }] })
     renderPage('/receita-federal/cno?uf=MG&codigo_municipio=4123&page=1&page_size=10')
     await waitFor(() => expect(screen.getByTestId('territory-map')).toHaveAttribute('data-points', '1'))
     expect(api.requestWorkGeolocations).not.toHaveBeenCalled()
+    expect(api.mapa).toHaveBeenCalledWith({ uf: 'MG', codigo_municipio: '4123' }, expect.any(AbortSignal))
+    expect(screen.getByText(/1 pontos para 1 ocorrências/)).toHaveTextContent('Cobertura cartográfica completa')
+  })
+  it('declara truncamento e obras sem coordenadas sem limitar o mapa à página textual', async () => {
+    api.mapa.mockResolvedValue({ release: '2026-09', source_file_id: 17, filters: { uf: 'MG' }, coverage: { results_total: 3000, points_total: 2500, without_coordinates_total: 500, returned_points: 2000, limit: 2000, maximum_limit: 5000, truncated: true, points_match_results: true }, points: [] })
+    renderPage('/receita-federal/cno?uf=MG&page=2&page_size=10')
+    expect(await screen.findByText(/2500 pontos para 3000 ocorrências/)).toHaveTextContent('Exibindo 2000 de 2500 pontos')
+    expect(api.mapa).toHaveBeenCalledWith({ uf: 'MG' }, expect.any(AbortSignal))
+    expect(api.mapa.mock.calls[0][0]).not.toHaveProperty('page')
   })
   it('carrega o domínio municipal CNO por UF sem solicitar contagem', async () => {
     const user = userEvent.setup(); renderPage()
@@ -149,7 +162,7 @@ describe('pesquisas CNO', () => {
     expect(api.obras).not.toHaveBeenCalled()
     await user.click(screen.getByRole('button', { name: 'Buscar' }))
     await waitFor(() => expect(api.obras).toHaveBeenCalledWith({ q: '000001', page: 1, page_size: 10 }, expect.any(AbortSignal)))
-    expect(listStates).not.toHaveBeenCalled(); expect(api.municipios).not.toHaveBeenCalled(); expect(api.requestWorkGeolocations).not.toHaveBeenCalled()
+    expect(listStates).not.toHaveBeenCalled(); expect(api.municipios).not.toHaveBeenCalled(); expect(api.mapa).not.toHaveBeenCalled(); expect(api.requestWorkGeolocations).not.toHaveBeenCalled()
   })
   it('exibe os campos de correspondência informados pela API sem reclassificar no cliente', async () => {
     api.obras.mockResolvedValue(fastPage([{ ...work, campos_correspondencia: ['cno', 'ni_responsavel'] }]))
