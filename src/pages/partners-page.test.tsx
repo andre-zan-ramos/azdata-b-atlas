@@ -140,4 +140,13 @@ describe('busca agrupada de sócios', () => {
     expect(screen.getByRole('combobox', { name: 'Modo de correspondência' })).toHaveValue('contendo')
     expect(partnersMock.mock.calls.every(([params]) => params.q_modo === 'contendo')).toBe(true)
   })
+
+  it('endereça o mapa sem consultar sócios e restaura a busca pelo histórico', async () => {
+    const user = userEvent.setup()
+    renderPage(['/receita-federal/cnpj/socios?q=maria&page=1', '/receita-federal/cnpj/socios?modo=mapa&q=maria&page=1'])
+    expect(screen.getByRole('heading', { name: 'Mapa de Sócios' })).toBeInTheDocument()
+    expect(partnersMock).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', { name: 'Voltar no histórico' }))
+    expect(await screen.findByRole('article')).toBeInTheDocument()
+  })
 })

@@ -24,9 +24,9 @@ function Location() {
   return <><output data-testid="location">{location.pathname}{location.search}</output><button onClick={() => navigate(-1)}>Histórico voltar</button><button onClick={() => navigate(1)}>Histórico avançar</button></>
 }
 function renderPage(path = '/receita-federal/cno') {
-  return render(<Providers><MemoryRouter initialEntries={[path]}><Location /><Routes>
+  const entry = path === '/receita-federal/cno' ? `${path}?modo=mapa` : path.startsWith('/receita-federal/cno?') && !path.includes('modo=') ? path.replace('?', '?modo=mapa&') : path
+  return render(<Providers><MemoryRouter initialEntries={[entry]}><Location /><Routes>
     <Route path="/receita-federal/cno" element={<CnoSearchPage key="obras" />} />
-    <Route path="/receita-federal/cno/vinculos" element={<CnoSearchPage key="vinculos" kind="vinculos" />} />
     <Route path="/receita-federal/cno/obras/:id" element={<CnoDetailPage />} />
   </Routes></MemoryRouter></Providers>)
 }
@@ -140,14 +140,14 @@ describe('pesquisas CNO', () => {
     await screen.findByRole('heading', { name: 'CNO 000001' })
     expect(api.obra).toHaveBeenCalledWith('41', expect.any(AbortSignal))
     await userEvent.click(screen.getByRole('link', { name: 'Voltar à consulta anterior' }))
-    expect(screen.getByTestId('location')).toHaveTextContent('/receita-federal/cno?cno=001&page=3')
+    expect(screen.getByTestId('location')).toHaveTextContent('/receita-federal/cno?modo=mapa&cno=001&page=3')
   })
-  it('vínculo abre pesquisa de obras e aceita resultado vazio', async () => {
-    api.obras.mockResolvedValue(fastPage()); renderPage('/receita-federal/cno/vinculos?ni_responsavel=00-X')
-    await userEvent.click(await screen.findByRole('link', { name: 'Pesquisar obras com CNO 000001' }))
-    await screen.findByText('Nenhum resultado')
-    expect(api.obras).toHaveBeenCalledWith(expect.objectContaining({ cno: '000001' }), expect.any(AbortSignal))
-    expect(api.obra).not.toHaveBeenCalled()
+  it('mantém a busca como padrão sem consultar a API e preserva filtros compatíveis ao abrir o mapa', async () => {
+    renderPage('/receita-federal/cno?modo=busca&cno=000001&ni_responsavel=00-X&uf=MG')
+    expect(screen.getByRole('heading', { name: 'Busca de obras' })).toBeInTheDocument()
+    expect(api.obras).not.toHaveBeenCalled(); expect(listStates).not.toHaveBeenCalled()
+    await userEvent.click(screen.getByRole('link', { name: 'Mapa' }))
+    await waitFor(() => expect(screen.getByTestId('location')).toHaveTextContent('/receita-federal/cno?modo=mapa&cno=000001&ni_responsavel=00-X'))
   })
   it('associa 400 ao campo e bloqueia parâmetros inválidos de URL', async () => {
     api.obras.mockRejectedValue(new ApiError('Revise.', 400, undefined, { cno: ['Valor rejeitado.'] }))

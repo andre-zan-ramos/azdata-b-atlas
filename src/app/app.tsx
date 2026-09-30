@@ -1,4 +1,4 @@
-import { Link, Navigate, NavLink, Outlet, Route, Routes } from 'react-router'
+import { Link, Navigate, NavLink, Outlet, Route, Routes, useLocation } from 'react-router'
 import { HomePage } from '../pages/home-page'
 import { NotFoundPage } from '../pages/not-found-page'
 import { EstablishmentsPage } from '../pages/establishments-page'
@@ -31,6 +31,19 @@ function AppShell() {
   )
 }
 
+export function legacyCnoLinksTarget(search: string) {
+  const current = new URLSearchParams(search)
+  const next = new URLSearchParams()
+  next.set('modo', 'mapa')
+  for (const key of ['cno', 'ni_responsavel', 'return_to']) for (const value of current.getAll(key)) next.append(key, value)
+  return `/receita-federal/cno?${next.toString()}`
+}
+
+function LegacyCnoLinksRedirect() {
+  const location = useLocation()
+  return <Navigate to={legacyCnoLinksTarget(location.search)} replace />
+}
+
 export function App() {
   return (
     <Routes>
@@ -44,7 +57,7 @@ export function App() {
         <Route path="receita-federal/cnpj/socios" element={<PartnersPage />} />
         <Route path="receita-federal/cnpj/socios/detalhes" element={<PartnerDetailPage />} />
         <Route path="receita-federal/cno" element={<CnoSearchPage key="obras" />} />
-        <Route path="receita-federal/cno/vinculos" element={<CnoSearchPage key="vinculos" kind="vinculos" />} />
+        <Route path="receita-federal/cno/vinculos" element={<LegacyCnoLinksRedirect />} />
         <Route path="receita-federal/cno/obras/:id" element={<CnoDetailPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>

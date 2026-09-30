@@ -5,11 +5,12 @@ import { ApiError } from '../api/errors'
 import { listStates } from '../api/ibge/territories'
 import { cnoApi, cnoQueryOptions, filterKeys } from '../api/receita-federal/cno/client'
 import { adaptPage, readSearch } from '../api/receita-federal/cno/navigation'
-import type { CnoMunicipality, Page, WorkLink, WorkSummary } from '../api/receita-federal/cno/types'
-import { fieldLabels, LinkResults, WorkTable } from '../components/cno-results'
+import type { CnoMunicipality, Page, WorkSummary } from '../api/receita-federal/cno/types'
+import { fieldLabels, WorkTable } from '../components/cno-results'
 import { Pagination } from '../components/pagination'
 import { Empty, QueryError } from '../components/query-state'
 import { internalReturnTo } from '../utils/navigation'
+import { AreaModeSwitcher, useAreaMode } from '../components/area-mode-switcher'
 
 const TerritoryMap = lazy(() => import('../components/cno-territory-map').then(module => ({ default: module.CnoTerritoryMap })))
 
@@ -23,17 +24,18 @@ async function listCnoMunicipalities(uf: string, signal?: AbortSignal) {
   }
 }
 
-export function CnoSearchPage({ kind = 'obras' }: { kind?: 'obras' | 'vinculos' }) {
+export function CnoSearchPage() {
   const [search, setSearch] = useSearchParams()
+  const mode = useAreaMode()
   const location = useLocation()
   const queryClient = useQueryClient()
-  const { filters, params, errors: urlErrors, active } = readSearch(search, kind)
+  const { filters, params, errors: urlErrors, active } = readSearch(search, 'obras')
   const [draft, setDraft] = useState<Record<string, string>>(filters)
   const [municipalitySearch, setMunicipalitySearch] = useState('')
   const [municipalityOpen, setMunicipalityOpen] = useState(false)
   const [activeMunicipality, setActiveMunicipality] = useState(0)
-  const states = useQuery({ queryKey: ['ibge', 'states'], queryFn: ({ signal }) => listStates(signal), staleTime: 86400000, retry: false, enabled: kind === 'obras' })
-  const municipalities = useQuery({ queryKey: ['cno', 'municipalities', draft.uf], queryFn: ({ signal }) => listCnoMunicipalities(draft.uf, signal), staleTime: 86400000, retry: false, enabled: kind === 'obras' && Boolean(draft.uf) })
+  const states = useQuery({ queryKey: ['ibge', 'states'], queryFn: ({ signal }) => listStates(signal), staleTime: 86400000, retry: false, enabled: mode === 'mapa' })
+  const municipalities = useQuery({ queryKey: ['cno', 'municipalities', draft.uf], queryFn: ({ signal }) => listCnoMunicipalities(draft.uf, signal), staleTime: 86400000, retry: false, enabled: mode === 'mapa' && Boolean(draft.uf) })
   const names = useMemo(() => new Map((draft.uf ? municipalities.data ?? [] : states.data ?? []).flatMap(item => 'codigo_ibge' in item ? item.codigo_ibge === null ? [] : [[item.codigo_ibge, item.nome] as const] : [[String(item.id), item.nome] as const])), [draft.uf, municipalities.data, states.data])
   const selectedMunicipality = draft.codigo_municipio ? municipalities.data?.find(item => item.codigo_tom === draft.codigo_municipio) : undefined
   const municipalityOptions = (municipalities.data ?? []).filter(item => item.nome.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().includes(municipalitySearch.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase())).slice(0, 30)
@@ -41,14 +43,14 @@ export function CnoSearchPage({ kind = 'obras' }: { kind?: 'obras' | 'vinculos' 
   useEffect(() => { setDraft(JSON.parse(applied) as Record<string, string>) }, [applied])
   useEffect(() => { if (draft.codigo_municipio && selectedMunicipality) setMunicipalitySearch(selectedMunicipality.nome) }, [selectedMunicipality, draft.codigo_municipio])
   const invalid = Object.keys(urlErrors).length > 0
-  const query = useQuery<Page<WorkSummary> | Page<WorkLink>>({
-    ...cnoQueryOptions, queryKey: ['cno', kind, params], enabled: active && !invalid,
-    queryFn: ({ signal }) => kind === 'obras' ? cnoApi.obras(params, signal) : cnoApi.vinculos(params, signal),
+  const query = useQuery<Page<WorkSummary>>({
+    ...cnoQueryOptions, queryKey: ['cno', 'obras', params], enabled: mode === 'mapa' && active && !invalid,
+    queryFn: ({ signal }) => cnoApi.obras(params, signal),
   })
   const errors = { ...(query.error instanceof ApiError ? query.error.fields : {}), ...urlErrors }
   const error = invalid ? new ApiError('Revise os parâmetros da URL.', 400, undefined, urlErrors) : query.error
-  const view = query.data && !invalid && !query.isError ? adaptPage<WorkSummary | WorkLink>(query.data, params.page!, params.page_size!) : undefined
-  const visibleWorks = useMemo(() => kind === 'obras' && query.data && !invalid && !query.isError ? query.data.results as WorkSummary[] : [], [invalid, kind, query.data, query.isError])
+  const view = query.data && !invalid && !query.isError ? adaptPage(query.data, params.page!, params.page_size!) : undefined
+  const visibleWorks = useMemo(() => mode === 'mapa' && query.data && !invalid && !query.isError ? query.data.results as WorkSummary[] : [], [invalid, mode, query.data, query.isError])
   const geolocationMutation = useMutation({ mutationKey: ['cno', 'work-geolocation-request'], mutationFn: (ids: number[]) => cnoApi.requestWorkGeolocations(ids), retry: false })
   const requestWorkGeolocations = geolocationMutation.mutate
   useEffect(() => {
@@ -60,8 +62,9 @@ export function CnoSearchPage({ kind = 'obras' }: { kind?: 'obras' | 'vinculos' 
   const returnTo = location.pathname + location.search
   const apply = (listAll = false, overrides: Record<string, string> = {}) => {
     const next = new URLSearchParams()
+    next.set('modo', 'mapa')
     const values = { ...draft, ...overrides }
-    for (const key of filterKeys[kind]) if (values[key] !== undefined && values[key] !== '') next.set(key, values[key])
+    for (const key of filterKeys.obras) if (values[key] !== undefined && values[key] !== '') next.set(key, values[key])
     next.set('page', '1')
     next.set('page_size', String([10, 25, 50].includes(params.page_size!) ? params.page_size : 10))
     if (params.include_total !== undefined) next.set('include_total', String(params.include_total))
@@ -95,15 +98,16 @@ export function CnoSearchPage({ kind = 'obras' }: { kind?: 'obras' | 'vinculos' 
     {!active && !invalid && <p className="inline-message">Informe um identificador ou use os filtros para pesquisar.</p>}
     {query.isFetching && active && !invalid && <p role="status">Buscando…</p>}
     {error && <QueryError error={error} retry={() => { if (!invalid) void query.refetch() }} />}
-    {active && view && <>{view.results.length === 0 ? <Empty /> : kind === 'obras' ? <WorkTable items={view.results as WorkSummary[]} returnTo={returnTo} /> : <LinkResults items={view.results as WorkLink[]} returnTo={returnTo} />}<Pagination page={view.page} pageSize={view.pageSize} count={view.count} previous={view.hasPrevious && view.page > 1} next={view.hasNext && view.page < 999999999} onPage={changePage} /></>}
+    {active && view && <>{view.results.length === 0 ? <Empty /> : <WorkTable items={view.results} returnTo={returnTo} />}<Pagination page={view.page} pageSize={view.pageSize} count={view.count} previous={view.hasPrevious && view.page > 1} next={view.hasNext && view.page < 999999999} onPage={changePage} /></>}
   </>
 
   return <section className="search-page cno-page">
     {search.has('return_to') && <Link className="back-link" to={internalReturnTo(search.get('return_to'), '/receita-federal/cno')}>Voltar à consulta anterior</Link>}
-    <div className="page-heading"><h1>{kind === 'obras' ? 'Obras' : 'Vínculos de obras'}</h1><Link to={kind === 'obras' ? '/receita-federal/cno/vinculos' : '/receita-federal/cno'}>{kind === 'obras' ? 'Pesquisar vínculos' : 'Pesquisar obras'}</Link></div>
-    <div className={kind === 'obras' ? 'cno-explorer' : undefined}>
-    <form className="filter-card" onSubmit={submit} role="search" aria-label={kind === 'obras' ? 'Pesquisa de obras' : 'Pesquisa de vínculos'}>
-      {kind === 'obras' ? <>
+    <div className="page-heading"><h1>Obras</h1></div>
+    <AreaModeSwitcher mode={mode} compatibleKeys={['cno', 'ni_responsavel', 'return_to']} />
+    {mode === 'busca' ? <section className="mode-placeholder" aria-labelledby="works-search-title"><h2 id="works-search-title">Busca de obras</h2><p>A busca compacta por CNO ou responsável será disponibilizada quando o contrato correspondente da API estiver publicado. Use o modo Mapa para a exploração territorial atual.</p></section> : <>
+    <div className="cno-explorer">
+    <form className="filter-card" onSubmit={submit} role="search" aria-label="Pesquisa de obras">
         <div className="cno-primary-grid">
           <label>UF<select aria-label="UF" value={draft.uf ?? ''} onChange={event => { setDraft(current => ({ ...current, uf: event.target.value, codigo_municipio: '' })); setMunicipalitySearch('') }}><option value="">Todo o Brasil</option>{[...(states.data ?? [])].sort((a, b) => (a.sigla ?? '').localeCompare(b.sigla ?? '')).map(state => <option key={state.id} value={state.sigla}>{state.sigla} · {state.nome}</option>)}</select></label>
           <div className="cno-municipality-field"><label htmlFor="cno-municipality">Município</label><input id="cno-municipality" role="combobox" aria-autocomplete="list" aria-expanded={municipalityOpen} aria-controls="cno-municipalities" aria-activedescendant={municipalityOpen && municipalityOptions[activeMunicipality] ? `cno-municipality-${municipalityOptions[activeMunicipality].codigo_tom}` : undefined} disabled={!draft.uf || municipalities.isPending || municipalities.isError} placeholder={!draft.uf ? 'Selecione uma UF' : municipalities.isPending ? 'Carregando municípios…' : 'Buscar município…'} value={municipalitySearch} onFocus={() => setMunicipalityOpen(true)} onChange={event => { setMunicipalitySearch(event.target.value); setDraft(current => ({ ...current, codigo_municipio: '' })); setMunicipalityOpen(true); setActiveMunicipality(0) }} onKeyDown={event => { if (event.key === 'Escape') setMunicipalityOpen(false); else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') { event.preventDefault(); setMunicipalityOpen(true); setActiveMunicipality(current => municipalityOptions.length ? (current + (event.key === 'ArrowDown' ? 1 : -1) + municipalityOptions.length) % municipalityOptions.length : 0) } else if (event.key === 'Enter' && municipalityOpen && municipalityOptions[activeMunicipality]) { event.preventDefault(); selectMunicipality(municipalityOptions[activeMunicipality].codigo_ibge ?? '') } }} />{municipalityOpen && draft.uf && <div className="cno-municipality-options" id="cno-municipalities" role="listbox">{municipalityOptions.map((item, index) => <button id={`cno-municipality-${item.codigo_tom}`} key={`${item.uf}:${item.codigo_tom}`} role="option" aria-selected={item.codigo_tom === draft.codigo_municipio} data-active={index === activeMunicipality} tabIndex={-1} type="button" onMouseEnter={() => setActiveMunicipality(index)} onClick={() => { setDraft(current => ({ ...current, codigo_municipio: item.codigo_tom })); setMunicipalitySearch(item.nome); setMunicipalityOpen(false) }}>{item.nome}</button>)}{!municipalityOptions.length && <span>Nenhum município encontrado.</span>}</div>}{draft.codigo_municipio && <small>Código TOM {draft.codigo_municipio}</small>}</div>
@@ -113,11 +117,11 @@ export function CnoSearchPage({ kind = 'obras' }: { kind?: 'obras' | 'vinculos' 
         <p className="cno-filter-note">Selecione uma localidade ou clique no mapa para explorar as obras.</p>
         <div className="cno-form-grid">{field('data_inicio_obra_de', 'date')}{field('data_inicio_obra_ate', 'date')}</div>
         <details className="cno-advanced" open={['cno', 'ni_responsavel', 'situacao', 'cnae', 'cno_vinculado'].some(key => Boolean(filters[key]) || Boolean(errors[key])) || undefined}><summary>Identificadores e outros filtros</summary><div className="cno-form-grid">{['cno', 'ni_responsavel', 'situacao', 'cnae', 'cno_vinculado'].map(key => field(key))}</div></details>
-      </> : <div className="cno-form-grid">{field('cno')}{field('ni_responsavel')}</div>}
-      <div className="form-actions"><button type="submit">Pesquisar</button>{!active && <button type="button" onClick={() => apply(true)}>Listar {kind === 'obras' ? 'obras' : 'vínculos'}</button>}</div>
+      <div className="form-actions"><button type="submit">Pesquisar</button>{!active && <button type="button" onClick={() => apply(true)}>Listar obras</button>}</div>
     </form>
-    {kind === 'obras' && <section className="cno-map-card" aria-label="Explorar localidades no mapa"><div className="cno-map-heading"><div><h2>{selectedMunicipality ? selectedMunicipality.nome : draft.uf ? `Municípios de ${draft.uf}` : 'Explore o Brasil'}</h2><p>{selectedMunicipality ? 'Município enquadrado no mapa; pontos disponíveis representam aproximações pelo CEP.' : `Clique em ${draft.uf ? 'um município' : 'uma UF'} para filtrar as obras.`}</p></div>{draft.uf && <button type="button" onClick={() => { setDraft(current => ({ ...current, uf: '', codigo_municipio: '' })); setMunicipalitySearch(''); apply(false, { uf: '', codigo_municipio: '' }) }}>Voltar ao Brasil</button>}</div><Suspense fallback={<p role="status" className="cno-map-state">Carregando mapa…</p>}><TerritoryMap uf={draft.uf ?? ''} names={names} selectedMunicipalityIbge={selectedMunicipality?.codigo_ibge ?? null} works={visibleWorks} onState={selectState} onMunicipality={code => selectMunicipality(code, true)} /></Suspense><p className="cno-map-caption">{geolocationMutation.isPending ? 'Solicitando localizações aproximadas ainda não registradas…' : geolocationMutation.isError ? 'Não foi possível solicitar novas localizações; as obras e os pontos já registrados continuam disponíveis.' : 'A seleção no mapa atualiza a pesquisa. Obras sem coordenadas continuam disponíveis nos resultados.'}{visibleWorks.some(work => work.geolocation?.status === 'pending') && !geolocationMutation.isPending ? <> O enriquecimento de algumas obras está em andamento. <button className="cno-map-refresh" type="button" onClick={() => void query.refetch()}>Atualizar pontos</button></> : null}</p></section>}
-    {kind === 'obras' ? <details className="cno-results-panel cno-results-disclosure"><summary>Resultados da pesquisa{view ? ` (${view.results.length} nesta página)` : ''}</summary>{resultContent}</details> : resultContent}
+    <section className="cno-map-card" aria-label="Explorar localidades no mapa"><div className="cno-map-heading"><div><h2>{selectedMunicipality ? selectedMunicipality.nome : draft.uf ? `Municípios de ${draft.uf}` : 'Explore o Brasil'}</h2><p>{selectedMunicipality ? 'Município enquadrado no mapa; pontos disponíveis representam aproximações pelo CEP.' : `Clique em ${draft.uf ? 'um município' : 'uma UF'} para filtrar as obras.`}</p></div>{draft.uf && <button type="button" onClick={() => { setDraft(current => ({ ...current, uf: '', codigo_municipio: '' })); setMunicipalitySearch(''); apply(false, { uf: '', codigo_municipio: '' }) }}>Voltar ao Brasil</button>}</div><Suspense fallback={<p role="status" className="cno-map-state">Carregando mapa…</p>}><TerritoryMap uf={draft.uf ?? ''} names={names} selectedMunicipalityIbge={selectedMunicipality?.codigo_ibge ?? null} works={visibleWorks} onState={selectState} onMunicipality={code => selectMunicipality(code, true)} /></Suspense><p className="cno-map-caption">{geolocationMutation.isPending ? 'Solicitando localizações aproximadas ainda não registradas…' : geolocationMutation.isError ? 'Não foi possível solicitar novas localizações; as obras e os pontos já registrados continuam disponíveis.' : 'A seleção no mapa atualiza a pesquisa. Obras sem coordenadas continuam disponíveis nos resultados.'}{visibleWorks.some(work => work.geolocation?.status === 'pending') && !geolocationMutation.isPending ? <> O enriquecimento de algumas obras está em andamento. <button className="cno-map-refresh" type="button" onClick={() => void query.refetch()}>Atualizar pontos</button></> : null}</p></section>
+    <details className="cno-results-panel cno-results-disclosure"><summary>Resultados da pesquisa{view ? ` (${view.results.length} nesta página)` : ''}</summary>{resultContent}</details>
     </div>
+    </>}
   </section>
 }

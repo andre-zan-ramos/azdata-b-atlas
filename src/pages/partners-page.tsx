@@ -9,6 +9,7 @@ import type { GroupedPartnerSearchItem, PageSize, PartnerParticipation, TextMatc
 import { Pagination } from '../components/pagination'
 import { Empty, QueryError } from '../components/query-state'
 import { TextMatchModeSelect } from '../components/text-match-mode-select'
+import { AreaModeSwitcher, UnavailableMap, useAreaMode } from '../components/area-mode-switcher'
 import { partnerDetailPath } from '../utils/partners'
 
 const PAGE_SIZE: PageSize = 10
@@ -52,6 +53,7 @@ function PartnerGroup({ group, returnTo, groupIndex }: { group: GroupedPartnerSe
 
 export function PartnersPage() {
   const [search, setSearch] = useSearchParams()
+  const mode = useAreaMode()
   const location = useLocation()
   const term = search.get('q')?.trim() ?? ''
   const rawQMode = search.get('q_modo')
@@ -67,7 +69,7 @@ export function PartnersPage() {
   const page = pageFromSearch(search.get('page'))
   const params = { q: term, q_modo: qMode, page, page_size: PAGE_SIZE }
   const searchable = term.length >= 3
-  const query = useQuery({ queryKey: ['cnpj', 'partners', params], enabled: searchable, queryFn: ({ signal }) => cnpjApi.partners(params, signal) })
+  const query = useQuery({ queryKey: ['cnpj', 'partners', params], enabled: mode === 'busca' && searchable, queryFn: ({ signal }) => cnpjApi.partners(params, signal) })
   const localQError = term && !searchable ? 'Informe ao menos 3 caracteres.' : undefined
   const qError = localQError || (query.error instanceof ApiError ? query.error.fields?.q?.join(' ') : undefined)
   const view = query.data && adaptPage(query.data, page, PAGE_SIZE)
@@ -83,6 +85,8 @@ export function PartnersPage() {
   const changeMode = (value: TextMatchMode) => { const next = new URLSearchParams(search); next.set('q_modo', value); next.set('page', '1'); setSearch(next) }
 
   return <section className="search-page">
+    <AreaModeSwitcher mode={mode} compatibleKeys={['q', 'q_modo', 'page', 'return_to']} />
+    {mode === 'mapa' ? <UnavailableMap area="Sócios" /> : <>
     <form className={`unified-search${term ? ' compact' : ''}`} onSubmit={submit} role="search">
       <label htmlFor="partner-search">Encontre um sócio</label>
       <div className="search-row"><input id="partner-search" name="q" value={inputValue} onChange={event => setInputValue(event.target.value)} autoFocus aria-invalid={Boolean(qError)} aria-describedby={qError ? 'partner-search-error' : 'partner-search-help'} placeholder="Digite o nome da pessoa ou empresa sócia" /><TextMatchModeSelect value={qMode} onChange={changeMode} /><button>Buscar</button></div>
@@ -99,5 +103,6 @@ export function PartnersPage() {
       })}</div>
       <Pagination page={view.page} pageSize={view.pageSize} count={view.count} previous={view.hasPrevious} next={view.hasNext} onPage={changePage} />
     </> : null}
+    </>}
   </section>
 }
