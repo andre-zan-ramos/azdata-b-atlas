@@ -118,7 +118,6 @@ export function CnoSearchPage() {
 
   return <section className="search-page cno-page">
     {search.has('return_to') && <Link className="back-link" to={internalReturnTo(search.get('return_to'), '/receita-federal/cno')}>Voltar à consulta anterior</Link>}
-    <div className="page-heading"><h1>Obras</h1></div>
     <AreaModeSwitcher mode={mode} compatibleKeys={['return_to']} />
     {mode === 'busca' ? <>
       <form className={`unified-search${filters.q ? ' compact' : ''}`} onSubmit={submitSearch} role="search">
