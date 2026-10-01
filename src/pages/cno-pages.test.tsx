@@ -76,12 +76,17 @@ describe('pesquisas CNO', () => {
     await waitFor(() => expect(screen.getByTestId('territory-map')).toHaveAttribute('data-selected', '3106200'))
     expect(screen.getByRole('heading', { name: 'Belo Horizonte' })).toBeInTheDocument()
   })
-  it('ativa uma única solicitação em lote quando a API publica not_requested e refaz a consulta uma vez', async () => {
+  it('solicita geolocalização somente por ação explícita e não repete automaticamente', async () => {
     const notRequested = { status: 'not_requested', reason: null, precision: null, latitude: null, longitude: null, source: null, observed_at: null, stale: false } as const
     api.obras.mockResolvedValue(fastPage([{ ...work, geolocation: notRequested }]))
     renderPage('/receita-federal/cno?uf=MG&codigo_municipio=4123&page=1&page_size=10')
+    const button = await screen.findByRole('button', { name: 'Solicitar localizações da página (até 50)' })
+    expect(api.requestWorkGeolocations).not.toHaveBeenCalled()
+    await userEvent.setup().click(button)
     await waitFor(() => expect(api.requestWorkGeolocations).toHaveBeenCalledExactlyOnceWith([41]))
     await waitFor(() => expect(api.obras).toHaveBeenCalledTimes(2))
+    expect(button).toBeDisabled()
+    expect(api.requestWorkGeolocations).toHaveBeenCalledTimes(1)
   })
   it('entrega ao mapa os pontos disponíveis sem solicitar estados resolvidos', async () => {
     const available = { status: 'available', reason: null, precision: 'postal_code_approximation', latitude: -19.9, longitude: -43.9, source: 'provider', observed_at: '2026-09-28T12:00:00Z', stale: false } as const
@@ -92,6 +97,15 @@ describe('pesquisas CNO', () => {
     expect(api.requestWorkGeolocations).not.toHaveBeenCalled()
     expect(api.mapa).toHaveBeenCalledWith({ uf: 'MG', codigo_municipio: '4123' }, expect.any(AbortSignal))
     expect(screen.getByText(/1 pontos para 1 ocorrências/)).toHaveTextContent('Cobertura cartográfica completa')
+  })
+  it('oculta pontos quando a publicação da lista difere do mapa', async () => {
+    api.obras.mockResolvedValue(fastPage([{ ...work, release: 'outra-release' }]))
+    const geolocation = { status: 'available', reason: null, precision: 'postal_code_approximation', latitude: -19, longitude: -43, source: 'provider', observed_at: null, stale: false } as const
+    api.mapa.mockResolvedValue({ release: '2026-09', source_file_id: 17, filters: { uf: 'MG' }, coverage: { results_total: 1, points_total: 1, without_coordinates_total: 0, returned_points: 1, limit: 2000, maximum_limit: 5000, truncated: false, points_match_results: true }, points: [{ ...work, source_file_id: 17, geolocation }] })
+    renderPage('/receita-federal/cno?uf=MG&page=1')
+    expect(await screen.findByText(/Mapa e resultados têm filtros ou publicações incompatíveis/)).toBeInTheDocument()
+    expect(screen.getByTestId('territory-map')).toHaveAttribute('data-points', '0')
+    expect(api.requestWorkGeolocations).not.toHaveBeenCalled()
   })
   it('declara truncamento e obras sem coordenadas sem limitar o mapa à página textual', async () => {
     api.mapa.mockResolvedValue({ release: '2026-09', source_file_id: 17, filters: { uf: 'MG' }, coverage: { results_total: 3000, points_total: 2500, without_coordinates_total: 500, returned_points: 2000, limit: 2000, maximum_limit: 5000, truncated: true, points_match_results: true }, points: [] })

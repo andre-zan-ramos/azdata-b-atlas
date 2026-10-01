@@ -8,3 +8,4 @@ coverage/
 *.local
 *.log
 *.tsbuildinfo
+/var/map-contract-measurements/

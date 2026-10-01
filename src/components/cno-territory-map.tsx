@@ -1,10 +1,12 @@
 import { useQuery } from '@tanstack/react-query'
 import L from 'leaflet'
 import { useEffect } from 'react'
-import { CircleMarker, GeoJSON, MapContainer, Popup, TileLayer, useMap } from 'react-leaflet'
+import { GeoJSON, MapContainer, Popup, TileLayer, useMap } from 'react-leaflet'
 import { Link } from 'react-router'
 import { getMesh, type Mesh } from '../api/ibge/territories'
 import type { WorkMapPoint } from '../api/receita-federal/cno/types'
+import { validCoordinates } from '../utils/map-accessibility'
+import { AccessibleCircleMarker } from './accessible-circle-marker'
 import 'leaflet/dist/leaflet.css'
 
 function Fit({ mesh, selectedMunicipalityIbge }: { mesh: Mesh; selectedMunicipalityIbge: string | null }) {
@@ -23,7 +25,7 @@ export function CnoTerritoryMap({ uf, onState, onMunicipality, names, selectedMu
   const mesh = useQuery({ queryKey: ['ibge', 'cno-mesh', uf], queryFn: ({ signal }) => getMesh(uf || undefined, signal), staleTime: 86400000, retry: false })
   if (mesh.isPending) return <p role="status" className="cno-map-state">Carregando mapa do IBGE…</p>
   if (mesh.isError) return <div className="cno-map-state" role="alert">Mapa indisponível. <button type="button" onClick={() => void mesh.refetch()}>Tentar novamente</button></div>
-  return <MapContainer className="cno-map" center={[-14.2, -51.9]} zoom={4} scrollWheelZoom>
+  return <MapContainer className="cno-map" center={[-14.2, -51.9]} zoom={4} scrollWheelZoom={false}>
     <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
     <Fit mesh={mesh.data} selectedMunicipalityIbge={selectedMunicipalityIbge} />
     <GeoJSON key={`${uf || 'BR'}-${names.size}-${selectedMunicipalityIbge ?? ''}`} data={mesh.data as GeoJSON.GeoJsonObject} style={feature => {
@@ -51,8 +53,8 @@ export function CnoTerritoryMap({ uf, onState, onMunicipality, names, selectedMu
     }} />
     {works.flatMap(work => {
       const geo = work.geolocation
-      if (geo?.status !== 'available' || geo.stale || geo.reason === 'context_mismatch' || geo.precision !== 'postal_code_approximation' || geo.latitude === null || geo.longitude === null) return []
-      return <CircleMarker key={work.id} center={[geo.latitude, geo.longitude]} radius={7} pathOptions={{ color: '#173f37', fillColor: '#eeb64b', fillOpacity: 1 }}><Popup><strong>CNO {work.cno ?? 'não informado'}</strong><br />{work.nome || work.nome_empresarial || 'Obra sem nome'}<br />{work.municipio ?? 'Município não informado'} / {work.uf ?? 'UF não informada'}<br /><small>Localização aproximada pelo CEP</small><br /><Link to={`/receita-federal/cno/obras/${work.id}?return_to=${encodeURIComponent(returnTo)}`}>Abrir ocorrência</Link></Popup></CircleMarker>
+      if (geo?.status !== 'available' || geo.stale || geo.reason === 'context_mismatch' || geo.precision !== 'postal_code_approximation' || geo.latitude === null || geo.longitude === null || !validCoordinates(geo.latitude, geo.longitude)) return []
+      return <AccessibleCircleMarker accessibleLabel={`Ocorrência ${work.id}, CNO ${work.cno ?? 'não informado'}. Abrir popup`} key={work.id} center={[geo.latitude, geo.longitude]} radius={7} pathOptions={{ color: '#173f37', fillColor: '#eeb64b', fillOpacity: 1 }}><Popup><strong>CNO {work.cno ?? 'não informado'}</strong><br />{work.nome || work.nome_empresarial || 'Obra sem nome'}<br />{work.municipio ?? 'Município não informado'} / {work.uf ?? 'UF não informada'}<br /><small>Localização aproximada pelo CEP</small><br /><Link to={`/receita-federal/cno/obras/${work.id}?return_to=${encodeURIComponent(returnTo)}`}>Abrir ocorrência</Link></Popup></AccessibleCircleMarker>
     })}
   </MapContainer>
 }

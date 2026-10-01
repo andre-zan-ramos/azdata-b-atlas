@@ -9,13 +9,16 @@ import { PartnerTerritoryMap } from './partner-territory-map'
 
 vi.mock('../api/ibge/territories', () => ({ getMesh: vi.fn().mockResolvedValue({ type: 'FeatureCollection', features: [] }) }))
 vi.mock('leaflet', () => ({ default: { geoJSON: () => ({ getBounds: () => ({ isValid: () => false }) }) } }))
-vi.mock('react-leaflet', () => ({
+vi.mock('react-leaflet', async () => {
+  const { forwardRef } = await import('react')
+  return {
   MapContainer: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-  CircleMarker: ({ children }: { children: ReactNode }) => <div data-testid="marker">{children}</div>,
+  CircleMarker: forwardRef<HTMLDivElement, { children: ReactNode }>(({ children }, _ref) => <div data-testid="marker">{children}</div>),
   Popup: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   Tooltip: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   GeoJSON: () => null, TileLayer: () => null, useMap: () => ({}),
-}))
+  }
+})
 const point: PartnerMapItem = {
   identity: { release: '2026-08', participation_id: 1, establishment_id: 2, cnpj: '00123456000100', geo_link_id: 3 },
   partner: { nome_socio_ou_razao_social: 'MARIA', cnpj_cpf_socio: null, missing_document_id: 1 },

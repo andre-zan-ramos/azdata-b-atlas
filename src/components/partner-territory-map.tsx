@@ -1,11 +1,12 @@
 import { useQuery } from '@tanstack/react-query'
 import L from 'leaflet'
 import { useEffect } from 'react'
-import { CircleMarker, GeoJSON, MapContainer, Popup, TileLayer, Tooltip, useMap } from 'react-leaflet'
+import { GeoJSON, MapContainer, Popup, TileLayer, Tooltip, useMap } from 'react-leaflet'
 import { getMesh, type Mesh } from '../api/ibge/territories'
 import type { PartnerMapItem } from '../api/receita-federal/cnpj/types'
 import { validPartnerPoint } from '../utils/partner-map'
 import { PartnerMapLinks } from './partner-map-links'
+import { AccessibleCircleMarker } from './accessible-circle-marker'
 import 'leaflet/dist/leaflet.css'
 
 function Fit({ mesh, selectedMunicipalityIbge }: { mesh: Mesh; selectedMunicipalityIbge: string | null }) {
@@ -35,7 +36,7 @@ export function PartnerTerritoryMap({ uf, onState, onMunicipality, names, select
     items.push(point)
     positions.set(key, items)
   }
-  return <MapContainer className="cno-map" center={[-14.2, -51.9]} zoom={4} scrollWheelZoom>
+  return <MapContainer className="cno-map" center={[-14.2, -51.9]} zoom={4} scrollWheelZoom={false}>
     <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
     <Fit mesh={mesh.data} selectedMunicipalityIbge={selectedMunicipalityIbge} />
     <GeoJSON key={`${uf || 'BR'}-${names.size}-${selectedMunicipalityIbge ?? ''}`} data={mesh.data as GeoJSON.GeoJsonObject} style={feature => ({ color: String(feature?.properties?.codarea ?? '') === selectedMunicipalityIbge ? '#8a5a16' : '#267864', weight: 1.5, fillColor: '#58aa8f', fillOpacity: .24 })} onEachFeature={(feature, layer) => {
@@ -50,7 +51,7 @@ export function PartnerTerritoryMap({ uf, onState, onMunicipality, names, select
         element.addEventListener('keydown', rawEvent => { const event = rawEvent as KeyboardEvent; if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); select() } })
       })
     }} />
-    {[...positions].map(([key, items]) => <CircleMarker key={key} center={[items[0].establishment.geolocation.latitude!, items[0].establishment.geolocation.longitude!]} radius={items.length > 1 ? 10 : 7} pathOptions={{ color: '#173f37', fillColor: '#eeb64b', fillOpacity: 1 }}>
+    {[...positions].map(([key, items]) => <AccessibleCircleMarker accessibleLabel={`${items.length} relações por estabelecimento neste local. Abrir popup`} key={key} center={[items[0].establishment.geolocation.latitude!, items[0].establishment.geolocation.longitude!]} radius={items.length > 1 ? 10 : 7} pathOptions={{ color: '#173f37', fillColor: '#eeb64b', fillOpacity: 1 }}>
       <Tooltip>{items.length} {items.length === 1 ? 'relação' : 'relações'} neste local. Clique para ver sócios e estabelecimentos.</Tooltip>
       <Popup><div className="partner-map-popup"><strong>{items.length} {items.length === 1 ? 'relação publicada' : 'relações publicadas'}</strong><p>A localização pertence ao estabelecimento.</p>{items.map((item, index) => <article key={`${item.identity.release}-${item.identity.participation_id}-${item.identity.establishment_id}-${index}`}>
         <strong>{item.partner.nome_socio_ou_razao_social}</strong><br />{item.partner.cnpj_cpf_socio ?? 'Documento não informado'}<br />
@@ -59,6 +60,6 @@ export function PartnerTerritoryMap({ uf, onState, onMunicipality, names, select
         <small>Localização aproximada pelo CEP · participação {item.participation.id}</small><br />
         <PartnerMapLinks item={item} returnTo={returnTo} />
       </article>)}</div></Popup>
-    </CircleMarker>)}
+    </AccessibleCircleMarker>)}
   </MapContainer>
 }

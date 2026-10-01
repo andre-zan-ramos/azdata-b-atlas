@@ -312,3 +312,17 @@ button.facet-option:hover { background: #f4f7f4; }
 .partner-map-filters, .partner-map-filters form, .partner-map-filters details { display: grid; gap: 12px; }
 .partner-map-filters h1, .partner-map-filters p { margin: 0; }
 .partner-map-popup article { border-top: 1px solid #d9e3de; margin-top: .7rem; padding-top: .7rem; }
+
+/* Shared Busca / Mapa interaction and narrow-screen layout. */
+.cno-explorer > * { min-width: 0; }
+.cno-map-heading { flex-wrap: wrap; }
+.cno-map-coverage, .cno-map-caption { overflow-wrap: anywhere; line-height: 1.6; }
+.area-mode-switcher { display: flex; }
+button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible,
+.leaflet-interactive:focus-visible { outline: 3px solid #347b68; outline-offset: 3px; }
+.partner-map-popup { max-width: 100%; overflow-wrap: anywhere; }
+@media (max-width: 600px) {
+  .cno-results-panel { padding: 12px; }
+  .cno-map-card { padding: 12px; }
+  .pagination { flex-wrap: wrap; gap: 8px; }
+}

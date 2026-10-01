@@ -28,7 +28,7 @@ export function PartnerMapMode() {
   const territories = map.data?.territories ?? []
   const municipalityNames = useMemo(() => new Map(territories.flatMap(item => item.codigo_ibge ? [[item.codigo_ibge, item.descricao] as const] : [])), [territories])
   const selectedMunicipality = territories.find(item => item.codigo === filters.municipio)
-  const compatible = Boolean(map.data && list.data && compatiblePartnerMap(map.data, list.data))
+  const compatible = Boolean(!map.isError && !list.isError && map.data && list.data && compatiblePartnerMap(map.data, list.data))
   const points = compatible ? (map.data?.points ?? []).filter(item => item.identity.release === map.data?.release) : []
   const returnTo = location.pathname + location.search
   const applyTerritory = (uf: string, municipio = '') => {
@@ -80,14 +80,14 @@ export function PartnerMapMode() {
         <Suspense fallback={<p role="status">Carregando mapa…</p>}><TerritoryMap uf={filters.uf ?? ''} names={filters.uf ? municipalityNames : stateNames} selectedMunicipalityIbge={selectedMunicipality?.codigo_ibge ?? null} points={points} returnTo={returnTo} onState={selectState} onMunicipality={selectMunicipality} /></Suspense>
         {map.data ? <p className="cno-map-coverage">{map.data.coverage.points_total} relações com coordenadas entre {map.data.coverage.results_total} relações participação/estabelecimento · {map.data.coverage.without_coordinates_total} sem coordenadas válidas · release {map.data.release ?? 'indisponível'}.{map.data.coverage.truncated ? ` Exibindo ${map.data.coverage.returned_points} de ${map.data.coverage.points_total} relações no mapa (limite ${map.data.coverage.limit}; máximo ${map.data.coverage.maximum_limit}).` : ' Nenhuma relação com coordenadas foi truncada.'} {compatible ? 'Mapa e lista têm filtros e publicação compatíveis.' : 'Compatibilidade entre mapa e lista ainda não confirmada.'}</p> : null}
         {map.data && compatible && points.length === 0 ? <p role="status">Nenhum estabelecimento com coordenadas válidas neste recorte.</p> : null}
-        <p className="cno-map-caption">Localização aproximada pelo CEP. Um marcador pode reunir várias relações no mesmo local; abra o popup para ver todas. Relações sem coordenadas permanecem na lista.</p>
+        <p className="cno-map-caption">Localização aproximada pelo CEP. Um marcador pode reunir várias relações no mesmo local; abra o popup para ver todas. Relações sem coordenadas permanecem na lista. Compatibilidade de release e filtros não garante snapshot transacional: CNPJ não possui versionamento por linha.</p>
         {map.data ? <details><summary>Filtros efetivamente aplicados</summary><dl>{Object.entries(map.data.filters).map(([key, value]) => <div key={key}><dt>{key}</dt><dd>{value}</dd></div>)}</dl></details> : null}
       </section>
       <section className="cno-results-panel" aria-label="Resultados de participações por estabelecimento"><h2>Participações por estabelecimento do recorte</h2>
         {list.isPending ? <p role="status">Carregando resultados…</p> : null}
         {list.isError ? <QueryError error={list.error} retry={() => void list.refetch()} /> : null}
         {view?.results.length === 0 ? <Empty /> : null}
-        {view && view.results.length > 0 ? <><div className="table-wrap"><table><thead><tr><th>Sócio na fonte</th><th>Empresa / estabelecimento</th><th>CNPJ completo</th><th>Município/UF</th><th>Participação / localização</th><th>Navegação</th></tr></thead><tbody>{view.results.map((item, index) => <tr key={`${item.identity.release}-${item.identity.participation_id}-${item.identity.establishment_id}-${index}`}>
+        {view && view.results.length > 0 ? <><div className="table-wrap" tabIndex={0} role="region" aria-label="Resultados textuais"><table><thead><tr><th>Sócio na fonte</th><th>Empresa / estabelecimento</th><th>CNPJ completo</th><th>Município/UF</th><th>Participação / localização</th><th>Navegação</th></tr></thead><tbody>{view.results.map((item, index) => <tr key={`${item.identity.release}-${item.identity.participation_id}-${item.identity.establishment_id}-${index}`}>
           <td>{item.partner.nome_socio_ou_razao_social}<br /><small>{item.partner.cnpj_cpf_socio ?? 'Documento não informado'}</small></td>
           <td>{item.company.razao_social}<br />{item.establishment.nome_fantasia}</td><td>{item.establishment.cnpj}</td>
           <td>{item.establishment.municipio?.descricao ?? 'Município não informado'} / {item.establishment.uf}</td>

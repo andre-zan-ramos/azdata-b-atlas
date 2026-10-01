@@ -32,7 +32,7 @@ export function WorkResults({ items, returnTo }: { items: WorkSummary[]; returnT
 }
 export function WorkTable({ items, returnTo }: { items: WorkSummary[]; returnTo: string }) {
   const showMatches = items.some(item => item.campos_correspondencia?.length)
-  return <div className="cno-table-scroll"><table className="cno-table"><thead><tr><th>CNO</th><th>Obra</th><th>Início da obra</th><th>Município / UF</th><th>Situação</th><th>Responsável</th>{showMatches && <th>Correspondência</th>}</tr></thead><tbody>{items.map(item => <tr key={item.id}>
+  return <div className="cno-table-scroll" tabIndex={0} role="region" aria-label="Resultados textuais"><table className="cno-table"><thead><tr><th>CNO</th><th>Obra</th><th>Início da obra</th><th>Município / UF</th><th>Situação</th><th>Responsável</th>{showMatches && <th>Correspondência</th>}</tr></thead><tbody>{items.map(item => <tr key={item.id}>
     <td><Link to={`/receita-federal/cno/obras/${item.id}?return_to=${encodeURIComponent(returnTo)}`}>CNO {officialText(item.cno)}</Link><small>ID técnico: {item.id}</small></td>
     <td className="cno-text">{officialText(item.nome)}<small>{officialText(item.nome_empresarial)}</small></td>
     <td className="cno-text">{officialText(item.data_inicio_obra)}</td>

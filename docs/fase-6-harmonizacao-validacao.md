@@ -1,0 +1,113 @@
+# Fase 6 — Harmonização e validação integral
+
+Data: 2026-10-01. Escopo: B-Atlas e AzData API, exclusivamente Fase 6.
+Base B-Atlas: `bfbe2ca` (Fase 5 efetiva); base API: `dbf1c1f`.
+Ambos os worktrees estavam limpos antes das alterações.
+O contrato integral e os handoffs de Sócios/CNO foram lidos antes de editar.
+
+## Entrega
+
+- Seletor Busca | Mapa restaura os parâmetros próprios de cada modo durante
+  alternância, inclusive após aplicar filtros. A URL ativa continua sendo a
+  fonte do recorte e do retorno. O histórico de modos usa estado do Router;
+  compartilhar uma URL compartilha o modo ativo, não o histórico do outro modo.
+- Foco visível nos controles e nos caminhos SVG. Marcadores recebem nome
+  acessível, Tab, Enter/Espaço para abrir e Escape para fechar o popup. A abertura
+  por teclado move foco para um link; Escape no popup devolve foco ao marcador.
+- Tabelas têm região identificada e foco para rolagem por teclado. A alternativa
+  textual permanece paginada no servidor e inclui registros sem coordenadas.
+- Mapas não capturam rolagem da página para zoom. Painéis podem encolher,
+  cabeçalhos quebram linha e paginação/popup se ajustam a telas estreitas.
+- Empresas recebe o mesmo painel de filtros de Sócios, erro de UFs e estados
+  explícitos de publicação indisponível e ausência de coordenadas. Limite máximo
+  passa a aparecer também em Empresas e Obras. Cobertura completa refere-se
+  somente aos pontos válidos, preservando o total sem coordenadas.
+- Obras verifica filtros publicados e release das ocorrências da página antes
+  de mostrar pontos; divergência mostra aviso e atualização manual. Pontos de
+  outra release/arquivo ficam ocultos. Empresas verifica filtros e release de
+  cada ponto contra o mapa; Sócios mantém sua comparação de release/filtros.
+- POST de geolocalização de Obras passa a depender do botão explícito
+  “Solicitar localizações da página (até 50)”. Uma tentativa por ID na sessão
+  do QueryClient, sem repetição automática. Nenhum GET solicita enriquecimento.
+- CNO rejeita coordenadas não finitas, fora dos limites e 0,0 na leitura
+  persistida, normalização do produtor e mapa. As ocorrências continuam na lista.
+- O teste OpenAPI verifica o conjunto exato dos oito paths vigentes, incluindo
+  `/obras/mapa/`, mantendo a comparação dos campos requeridos de lista/detalhe.
+
+Identidades, documentos, códigos, null/vazios, duplicatas, precisão postal e
+relações publicadas permanecem conforme os contratos predecessores. Não houve
+novas fontes, inferências, rotas, alteração de produtor ou de modelos managed=False.
+
+## Evidências e avaliação de volume
+
+- API: 100 testes CNPJ/CNO em SQLite de teste isolado passaram. Os modelos
+  não gerenciados são criados pelas fixtures somente no banco de teste.
+- B-Atlas: 198 testes em 22 arquivos passaram com `--maxWorkers=1`, incluindo navegação,
+  cancelamento, identidade, co-localização, cobertura, erros e paginação.
+- Builds B-Atlas e API web; verificação de UTF-8/mojibake e `git diff --check`
+  em ambos os repositórios.
+- Novos casos de volume exercitam 501 ocorrências CNO, 501 estabelecimentos e
+  501 relações participação/estabelecimento, atravessando o lote de 500. Cada
+  mapa retorna três pontos, declara 501 pontos totais e truncamento, com orçamento
+  de até dez consultas e sem INSERT/UPDATE/DELETE durante o GET.
+- São evidências isoladas de volume, limite e ausência de cascata; não medem
+  latência, plano, memória ou desempenho em PostgreSQL produtivo. A varredura
+  para contagens continua percorrendo o universo do recorte mesmo com limit=3.
+- Leaflet continua em chunk próprio e mapas são carregados sob demanda.
+
+Achados anteriores corrigidos: POST automático de Obras, falta de foco nos
+marcadores, perda de filtros na alternância, validação numérica incompleta no
+CNO, asserção OpenAPI desatualizada e diferenças de linguagem/estados.
+A revisão React verificou hooks, lazy loading, cancelamento, ausência de
+cascata, semântica dos links e controles e limites da apresentação.
+
+## Medição manual preparada, não executada
+
+O executor recomendado para VSCode é `scripts/measure_map_contracts.py`;
+`scripts/measure-map-contracts.ps1` permanece como alternativa de terminal.
+O Python usa apenas a biblioteca padrão e faz uma chamada por área, sem detalhes,
+POST, retry, laços de paginação ou recorte nacional. Exige UF e códigos municipais
+distintos Receita/TOM; limite padrão 10, máximo 100 e timeout HTTP de 20 segundos.
+Registra tempo HTTP, tamanho do corpo recebido, release, filtros e cobertura.
+O prazo total é imposto por processo separado, com teto de leitura de 5 MiB.
+`CONFIG` já contém Belo Horizonte/MG, Receita `4123`, TOM `4123` e a origem
+validada da configuração local do B-Atlas. Execute **Run Python File** sem argumentos.
+A origem pode vir de `VITE_AZDATA_API_BASE_URL` do ambiente ou `.env.local/.env`.
+Progresso e resultados ficam em `var/map-contract-measurements/<timestamp>/`
+como `events.jsonl` e `summary.json`, em UTF-8; esse diretório é ignorado pelo Git.
+O prompt da thread de análise está em `docs/prompt-monitoramento-medicao-fase-6.md`.
+
+Exemplo para execução pelo usuário, substituindo origem e códigos oficiais:
+
+```powershell
+python scripts/measure_map_contracts.py --base-url 'https://ORIGEM-DA-API' --uf MG --municipio-receita 'CODIGO_RECEITA' --municipio-tom 'CODIGO_TOM' --limit 10
+```
+
+O timeout do cliente não garante cancelamento da consulta no servidor. Limitar
+pontos não limita o custo da contagem. Usar município conhecido e acompanhar
+logs do servidor; não interpretar essa medição como EXPLAIN ou tempo SQL isolado.
+Não foram executados comandos contra banco compartilhado, índices, cargas,
+migrations operacionais ou scripts de produção.
+
+## Limitações e aceite
+
+Não existe ferramenta de navegador exposta nesta sessão e `agent-browser` não
+foi encontrado no PATH. Não houve verificação visual real de larguras, teclado,
+popup, tiles ou contraste; testes DOM/mocks não substituem essa validação.
+Pendente conferir as seis combinações a 1440 e 375 px, Tab/Enter/Espaço/Escape,
+seleção territorial, tabela rolável, retorno de detalhes, recarga e histórico.
+
+Empresas usa a lista existente sem metadados de release/filtros na resposta:
+os filtros enviados são iguais, mas não se confirma publicação entre chamadas.
+Obras declara release por ocorrência, não em envelope da lista; página vazia
+não comprova release. Sócios compara release/filtros, mas CNPJ não tem
+versionamento por linha: isso não garante snapshot transacional, sobretudo
+durante alteração de tabelas na mesma release. Essas limitações são explícitas
+na interface; ampliá-las exige contrato próprio, não inferência do consumidor.
+
+**Aceite da Fase 6: implementação e validação automatizada entregues;
+aceite integral pendente de navegador real e medição PostgreSQL.**
+**Contrato integral: preservado, sem declaração de aceite integral**, devido
+às pendências de validação e às limitações de compatibilidade acima.
+Fases 1 a 5 não foram reabertas. O fechamento Git foi autorizado posteriormente
+pelo usuário nesta thread; relatórios de medição permanecem locais e ignorados.

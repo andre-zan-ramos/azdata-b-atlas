@@ -1,11 +1,12 @@
 import { useQuery } from '@tanstack/react-query'
 import L from 'leaflet'
 import { useEffect } from 'react'
-import { CircleMarker, GeoJSON, MapContainer, Popup, TileLayer, useMap } from 'react-leaflet'
+import { GeoJSON, MapContainer, Popup, TileLayer, useMap } from 'react-leaflet'
 import { Link } from 'react-router'
 import { getMesh, type Mesh } from '../api/ibge/territories'
 import type { EstablishmentMapPoint } from '../api/receita-federal/cnpj/types'
 import { formatCnpj } from '../utils/format'
+import { AccessibleCircleMarker } from './accessible-circle-marker'
 import 'leaflet/dist/leaflet.css'
 
 function Fit({ mesh, selectedMunicipalityIbge }: { mesh: Mesh; selectedMunicipalityIbge: string | null }) {
@@ -24,7 +25,7 @@ export function EstablishmentTerritoryMap({ uf, onState, onMunicipality, names, 
   const mesh = useQuery({ queryKey: ['ibge', 'establishment-mesh', uf], queryFn: ({ signal }) => getMesh(uf || undefined, signal), staleTime: 86400000, retry: false })
   if (mesh.isPending) return <p role="status" className="cno-map-state">Carregando mapa do IBGE…</p>
   if (mesh.isError) return <div className="cno-map-state" role="alert">Mapa indisponível. <button type="button" onClick={() => void mesh.refetch()}>Tentar novamente</button></div>
-  return <MapContainer className="cno-map" center={[-14.2, -51.9]} zoom={4} scrollWheelZoom>
+  return <MapContainer className="cno-map" center={[-14.2, -51.9]} zoom={4} scrollWheelZoom={false}>
     <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
     <Fit mesh={mesh.data} selectedMunicipalityIbge={selectedMunicipalityIbge} />
     <GeoJSON key={`${uf || 'BR'}-${names.size}-${selectedMunicipalityIbge ?? ''}`} data={mesh.data as GeoJSON.GeoJsonObject} style={feature => {
@@ -46,7 +47,7 @@ export function EstablishmentTerritoryMap({ uf, onState, onMunicipality, names, 
     {points.flatMap(point => {
       const geo = point.geolocation
       if (geo.status !== 'available' || geo.stale || geo.reason === 'context_mismatch' || geo.precision !== 'postal_code_approximation' || geo.latitude === null || geo.longitude === null || !Number.isFinite(geo.latitude) || !Number.isFinite(geo.longitude) || geo.latitude < -90 || geo.latitude > 90 || geo.longitude < -180 || geo.longitude > 180 || (geo.latitude === 0 && geo.longitude === 0)) return []
-      return <CircleMarker key={`${point.cnpj}-${point.id}`} center={[geo.latitude, geo.longitude]} radius={7} pathOptions={{ color: '#173f37', fillColor: '#eeb64b', fillOpacity: 1 }}><Popup><strong>{point.nome_fantasia || point.razao_social}</strong><br />{formatCnpj(point.cnpj)}<br />{point.municipio?.descricao ?? 'Município não informado'} / {point.uf || 'UF não informada'}<br /><small>Localização aproximada pelo CEP</small><br /><Link to={`/receita-federal/cnpj/estabelecimentos/${point.cnpj}?return_to=${encodeURIComponent(returnTo)}`}>Abrir estabelecimento</Link></Popup></CircleMarker>
+      return <AccessibleCircleMarker accessibleLabel={`Estabelecimento CNPJ ${point.cnpj}. Abrir popup`} key={`${point.cnpj}-${point.id}`} center={[geo.latitude, geo.longitude]} radius={7} pathOptions={{ color: '#173f37', fillColor: '#eeb64b', fillOpacity: 1 }}><Popup><strong>{point.nome_fantasia || point.razao_social}</strong><br />{formatCnpj(point.cnpj)}<br />{point.municipio?.descricao ?? 'Município não informado'} / {point.uf || 'UF não informada'}<br /><small>Localização aproximada pelo CEP</small><br /><Link to={`/receita-federal/cnpj/estabelecimentos/${point.cnpj}?return_to=${encodeURIComponent(returnTo)}`}>Abrir estabelecimento</Link></Popup></AccessibleCircleMarker>
     })}
   </MapContainer>
 }
