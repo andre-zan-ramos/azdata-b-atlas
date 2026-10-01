@@ -9,7 +9,8 @@ import type { GroupedPartnerSearchItem, PageSize, PartnerParticipation, TextMatc
 import { Pagination } from '../components/pagination'
 import { Empty, QueryError } from '../components/query-state'
 import { TextMatchModeSelect } from '../components/text-match-mode-select'
-import { AreaModeSwitcher, UnavailableMap, useAreaMode } from '../components/area-mode-switcher'
+import { AreaModeSwitcher, useAreaMode } from '../components/area-mode-switcher'
+import { PartnerMapMode, PARTNER_MAP_FILTER_KEYS } from './partner-map-mode'
 import { partnerDetailPath } from '../utils/partners'
 
 const PAGE_SIZE: PageSize = 10
@@ -85,8 +86,8 @@ export function PartnersPage() {
   const changeMode = (value: TextMatchMode) => { const next = new URLSearchParams(search); next.set('q_modo', value); next.set('page', '1'); setSearch(next) }
 
   return <section className="search-page">
-    <AreaModeSwitcher mode={mode} compatibleKeys={['q', 'q_modo', 'page', 'return_to']} />
-    {mode === 'mapa' ? <UnavailableMap area="Sócios" /> : <>
+    <AreaModeSwitcher mode={mode} compatibleKeys={[...PARTNER_MAP_FILTER_KEYS, 'page', 'return_to']} />
+    {mode === 'mapa' ? <PartnerMapMode /> : <>
     <form className={`unified-search${term ? ' compact' : ''}`} onSubmit={submit} role="search">
       <label htmlFor="partner-search">Encontre um sócio</label>
       <div className="search-row"><input id="partner-search" name="q" value={inputValue} onChange={event => setInputValue(event.target.value)} autoFocus aria-invalid={Boolean(qError)} aria-describedby={qError ? 'partner-search-error' : 'partner-search-help'} placeholder="Digite o nome da pessoa ou empresa sócia" /><TextMatchModeSelect value={qMode} onChange={changeMode} /><button>Buscar</button></div>

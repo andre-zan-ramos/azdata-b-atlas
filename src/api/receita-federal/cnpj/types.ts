@@ -18,6 +18,18 @@ export type Partner = { identificador_socio: number | string; nome_socio_ou_raza
 export type PartnerParticipation = Omit<Partner, 'nome_socio_ou_razao_social' | 'cnpj_cpf_socio'> & { id: number; empresa: Pick<Company, 'cnpj_basico' | 'razao_social' | 'natureza_juridica' | 'porte_empresa'> }
 export type GroupedPartnerSearchItem = { nome_socio_ou_razao_social: string; cnpj_cpf_socio: string | null; participacoes_count: number; participacoes: PartnerParticipation[] }
 export type PartnerFilters = { q: string; q_modo?: TextMatchMode; page?: number; page_size?: PageSize; include_total?: boolean }
+export type PartnerMapFilters = Omit<EstablishmentFilters, 'cnpj' | 'nome' | 'nome_tipo' | 'nome_modo' | 'page' | 'page_size' | 'include_total'> & { q?: string; q_modo?: TextMatchMode; limit?: number; release?: string }
+export type PartnerMapItem = {
+  identity: { release: string; participation_id: number; establishment_id: number; cnpj: string; geo_link_id: number | null }
+  establishment: Pick<EstablishmentListItem, 'id' | 'cnpj' | 'cnpj_basico' | 'nome_fantasia' | 'uf' | 'municipio'> & { geolocation: EstablishmentGeolocation }
+  company: Pick<Company, 'cnpj_basico' | 'razao_social'>
+  partner: Pick<Partner, 'nome_socio_ou_razao_social' | 'cnpj_cpf_socio'> & { missing_document_id: number | null }
+  participation: Omit<PartnerParticipation, 'empresa'> & { cnpj_basico: string }
+}
+export type PartnerMapResponse = Omit<EstablishmentMapResponse, 'identity' | 'points' | 'coverage'> & { identity: { record: 'participation_establishment'; key: string[] }; points: PartnerMapItem[]; coverage: EstablishmentMapResponse['coverage'] & { unit: 'participation_establishment' } }
+export type PartnerMapResultsFilters = Omit<PartnerMapFilters, 'limit'> & { page?: number; page_size?: PageSize; include_total?: boolean }
+export type PartnerMapResults = Paginated<PartnerMapItem> & { release: string | null; filters: Record<string, string> }
+export type PartnerParticipationDetail = { release: string; participation: Partner & PartnerParticipation }
 export type GeolocationStatus = 'not_requested' | 'pending' | 'available' | 'unavailable' | 'temporary_error' | 'stale' | 'disabled'
 export type GeolocationReason = 'cep_missing' | 'cep_invalid' | 'not_found' | 'no_coordinates' | 'context_mismatch' | 'load_in_progress' | 'producer_unavailable' | 'provider_unavailable' | 'feature_disabled'
 export type EstablishmentGeolocation = { status: GeolocationStatus; reason: GeolocationReason | null; precision: 'postal_code_approximation' | null; latitude: number | null; longitude: number | null; source: string | null; observed_at: string | null; stale: boolean }

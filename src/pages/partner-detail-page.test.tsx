@@ -7,7 +7,7 @@ import type { GroupedPartnerSearchItem } from '../api/receita-federal/cnpj/types
 import { Providers } from '../app/providers'
 import { PartnerDetailPage } from './partner-detail-page'
 
-vi.mock('../api/receita-federal/cnpj/client', () => ({ cnpjApi: { partners: vi.fn() } }))
+vi.mock('../api/receita-federal/cnpj/client', () => ({ cnpjApi: { partners: vi.fn(), partnerParticipation: vi.fn() } }))
 vi.mock('../api/judicial/client', () => ({ judicialApi: { byPartyName: vi.fn() } }))
 const partnersMock = vi.mocked(cnpjApi.partners)
 const judicialMock = vi.mocked(judicialApi.byPartyName)
@@ -27,6 +27,17 @@ function renderPage() {
 
 describe('detalhe do sócio', () => {
   beforeEach(() => { vi.clearAllMocks(); judicialMock.mockResolvedValue(processPage) })
+
+  it('abre a participação técnica vinda do mapa sem buscar grupos por nome ou documento', async () => {
+    vi.mocked(cnpjApi.partnerParticipation).mockResolvedValue({ release: '2026-08', participation: { ...partner.participacoes[0], nome_socio_ou_razao_social: partner.nome_socio_ou_razao_social, cnpj_cpf_socio: null } })
+    const back = '/receita-federal/cnpj/socios?modo=mapa&uf=MG&page=3'
+    render(<Providers><MemoryRouter initialEntries={[`/receita-federal/cnpj/socios/detalhes?participacao=7&release=2026-08&return_to=${encodeURIComponent(back)}`]}><PartnerDetailPage /></MemoryRouter></Providers>)
+    expect(await screen.findByRole('heading', { name: 'MARIA SILVA' })).toBeInTheDocument()
+    expect(cnpjApi.partnerParticipation).toHaveBeenCalledWith(7, '2026-08', expect.any(AbortSignal))
+    expect(partnersMock).not.toHaveBeenCalled()
+    expect(screen.getByText(/sem afirmar identidade civil/)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: '← Voltar aos resultados' })).toHaveAttribute('href', back)
+  })
 
   it('carrega primeiro as participações e só então consulta processos por nome', async () => {
     let resolvePartner!: (value: typeof partnerPage) => void

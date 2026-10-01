@@ -4,6 +4,19 @@ import { createCnpjApi, serializeParams } from './client'
 import { adaptPage, pageFromSearch } from './pagination'
 
 describe('contrato CNPJ', () => {
+  it('consulta mapa, lista e participação separadamente sem cascata nem páginas no mapa', async () => {
+    const adapter = vi.fn<AxiosAdapter>(async config => ({ data: { points: [], results: [] }, status: 200, statusText: 'OK', headers: {}, config }))
+    const api = createCnpjApi(axios.create({ adapter }))
+    const controller = new AbortController()
+    await api.partnerMap({ uf: 'MG' }, controller.signal)
+    await api.partnerMapResults({ uf: 'MG', page: 3, page_size: 10, release: '2026-08' }, controller.signal)
+    await api.partnerParticipation(17, '2026-08', controller.signal)
+    expect(adapter.mock.calls.map(([config]) => config.url)).toEqual(['api/v1/receita-federal/cnpj/socios/mapa/', 'api/v1/receita-federal/cnpj/socios/mapa/resultados/', 'api/v1/receita-federal/cnpj/socios/participacoes/17/'])
+    expect(String(adapter.mock.calls[0][0].params)).toBe('uf=MG')
+    expect(String(adapter.mock.calls[1][0].params)).toBe('uf=MG&page=3&page_size=10&release=2026-08')
+    expect(String(adapter.mock.calls[2][0].params)).toBe('release=2026-08')
+    expect(adapter.mock.calls.every(([config]) => config.signal === controller.signal && config.method === 'get')).toBe(true)
+  })
   it('serializa somente parâmetros definidos e preserva zeros à esquerda', () => {
     expect(serializeParams({ cnpj_basico: '00123456', nome: '', page: 1 }).toString()).toBe('cnpj_basico=00123456&page=1')
   })

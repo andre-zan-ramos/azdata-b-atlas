@@ -1,5 +1,6 @@
 import type { AxiosInstance } from 'axios'
 import { apiClient } from '../../client'
+import type { PartnerMapFilters, PartnerMapResponse, PartnerMapResultsFilters, PartnerMapResults, PartnerParticipationDetail } from './types'
 import type { BusinessSearchFilters, BusinessSearchItem, CodeDescription, Company, CompanyDetail, CompanyFilters, CountedPage, EstablishmentDetail, EstablishmentFilters, EstablishmentGeolocation, EstablishmentListItem, EstablishmentMapFilters, EstablishmentMapResponse, FastPage, GroupedPartnerSearchItem, LocationFacetFilters, LocationFacetItem, Municipality, PageSize, Paginated, PartnerFilters } from './types'
 const PREFIX = 'api/v1/receita-federal/cnpj/'
 type Params = Record<string, string | number | boolean | undefined>
@@ -16,6 +17,9 @@ export function createCnpjApi(client: AxiosInstance = apiClient) {
     companies: (params: CompanyFilters, signal?: AbortSignal) => get<Paginated<Company>>('empresas/', params, signal),
     company: (root: string, signal?: AbortSignal) => get<CompanyDetail>(`empresas/${root}/`, undefined, signal),
     partners: (params: PartnerFilters, signal?: AbortSignal) => get<FastPage<GroupedPartnerSearchItem>>('socios/', { ...params, agrupar: true }, signal),
+    partnerMap: (params: PartnerMapFilters, signal?: AbortSignal) => get<PartnerMapResponse>('socios/mapa/', params, signal),
+    partnerMapResults: (params: PartnerMapResultsFilters, signal?: AbortSignal) => get<PartnerMapResults>('socios/mapa/resultados/', params, signal),
+    partnerParticipation: (id: number, release: string, signal?: AbortSignal) => get<PartnerParticipationDetail>(`socios/participacoes/${id}/`, { release }, signal),
     cnaes: (params: { descricao?: string; descricao_modo?: string; page?: number; page_size?: PageSize }, signal?: AbortSignal) => get<Paginated<CodeDescription>>('dominios/cnaes/', params, signal),
     municipalities: (params: { uf?: string; page?: number; page_size?: PageSize }, signal?: AbortSignal) => get<Paginated<Municipality>>('dominios/municipios/', params, signal),
     registrationStatuses: (params: { page?: number; page_size?: PageSize }, signal?: AbortSignal) => get<CountedPage<CodeDescription>>('dominios/situacoes-cadastrais/', params, signal),

@@ -308,3 +308,7 @@ button.facet-option:hover { background: #f4f7f4; }
 @media (max-width: 520px) { .establishment-geolocation-map { height: 230px; } }
 @media (max-width: 520px) { .search-row { align-items: stretch; flex-direction: column; } .search-row button { min-height: 40px; } .facet-popover { position: fixed; inset: auto 12px 12px; width: auto; max-height: calc(100vh - 80px); overflow: auto; border-radius: 12px; box-shadow: 0 0 0 100vmax rgb(18 33 28 / 35%); } }
 @media (max-width: 620px) { .partner-group-heading { padding-right: 0; }.partner-detail-link { position: static; display: block; margin: 0 16px 14px; text-align: center; transform: none; } }
+.partner-map-popup { max-height: 320px; overflow-y: auto; }
+.partner-map-filters, .partner-map-filters form, .partner-map-filters details { display: grid; gap: 12px; }
+.partner-map-filters h1, .partner-map-filters p { margin: 0; }
+.partner-map-popup article { border-top: 1px solid #d9e3de; margin-top: .7rem; padding-top: .7rem; }

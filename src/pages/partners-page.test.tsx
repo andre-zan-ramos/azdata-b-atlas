@@ -9,6 +9,7 @@ import { Providers } from '../app/providers'
 import { PartnersPage } from './partners-page'
 
 vi.mock('../api/receita-federal/cnpj/client', () => ({ cnpjApi: { partners: vi.fn(), company: vi.fn() } }))
+vi.mock('./partner-map-mode', () => ({ PARTNER_MAP_FILTER_KEYS: ['q', 'q_modo', 'uf', 'municipio'], PartnerMapMode: () => <h1>Mapa de Sócios</h1> }))
 const partnersMock = vi.mocked(cnpjApi.partners)
 const companyMock = vi.mocked(cnpjApi.company)
 
