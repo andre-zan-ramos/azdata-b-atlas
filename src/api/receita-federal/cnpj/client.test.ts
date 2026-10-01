@@ -13,15 +13,22 @@ describe('contrato CNPJ', () => {
   it.each(['contendo', 'inicio', 'fim', 'exato'] as const)('serializa q_modo=%s no cliente', mode => {
     expect(serializeParams({ q: 'atlas', q_modo: mode }).toString()).toBe(`q=atlas&q_modo=${mode}`)
   })
-  it('usa prefixo e barras finais nos seis endpoints', async () => {
+  it('usa prefixo e barras finais nos endpoints', async () => {
     const adapter = vi.fn<AxiosAdapter>(async config => ({ data: { results: [] }, status: 200, statusText: 'OK', headers: {}, config }))
     const api = createCnpjApi(axios.create({ adapter }))
-    await api.establishments({}); await api.establishment('00123456000199'); await api.companies({}); await api.company('00123456'); await api.cnaes({}); await api.municipalities({})
+    await api.establishments({}); await api.establishmentMap({uf:'MG'}); await api.establishment('00123456000199'); await api.companies({}); await api.company('00123456'); await api.cnaes({}); await api.municipalities({})
     expect(adapter.mock.calls.map(call => call[0].url)).toEqual([
-      'api/v1/receita-federal/cnpj/estabelecimentos/', 'api/v1/receita-federal/cnpj/estabelecimentos/00123456000199/',
+      'api/v1/receita-federal/cnpj/estabelecimentos/', 'api/v1/receita-federal/cnpj/estabelecimentos/mapa/', 'api/v1/receita-federal/cnpj/estabelecimentos/00123456000199/',
       'api/v1/receita-federal/cnpj/empresas/', 'api/v1/receita-federal/cnpj/empresas/00123456/',
       'api/v1/receita-federal/cnpj/dominios/cnaes/', 'api/v1/receita-federal/cnpj/dominios/municipios/',
     ])
+  })
+  it('propaga AbortSignal e não envia paginação à consulta cartográfica', async () => {
+    const adapter = vi.fn<AxiosAdapter>(async config => ({ data: { points: [] }, status: 200, statusText: 'OK', headers: {}, config }))
+    const controller = new AbortController()
+    await createCnpjApi(axios.create({ adapter })).establishmentMap({ uf: 'MG', municipio: '4123' }, controller.signal)
+    expect(adapter.mock.calls[0][0].signal).toBe(controller.signal)
+    expect(String(adapter.mock.calls[0][0].params)).toBe('uf=MG&municipio=4123')
   })
   it('usa os endpoints unificados, a faceta e os domínios oficiais', async () => {
     const adapter = vi.fn<AxiosAdapter>(async config => ({ data: { count:0,next:null,previous:null,results:[] }, status:200, statusText:'OK', headers:{}, config }))
