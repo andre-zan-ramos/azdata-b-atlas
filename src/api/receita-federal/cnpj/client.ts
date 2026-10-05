@@ -1,13 +1,21 @@
+import type { EstablishmentMapResults, SegmentCatalog } from './types'
 import type { AxiosInstance } from 'axios'
 import { apiClient } from '../../client'
 import type { PartnerMapFilters, PartnerMapResponse, PartnerMapResultsFilters, PartnerMapResults, PartnerParticipationDetail } from './types'
 import type { BusinessSearchFilters, BusinessSearchItem, CodeDescription, Company, CompanyDetail, CompanyFilters, CountedPage, EstablishmentDetail, EstablishmentFilters, EstablishmentGeolocation, EstablishmentListItem, EstablishmentMapFilters, EstablishmentMapResponse, FastPage, GroupedPartnerSearchItem, LocationFacetFilters, LocationFacetItem, Municipality, PageSize, Paginated, PartnerFilters } from './types'
 const PREFIX = 'api/v1/receita-federal/cnpj/'
 type Params = Record<string, string | number | boolean | undefined>
-export function serializeParams(params: Params) { const query = new URLSearchParams(); Object.entries(params).forEach(([key, value]) => { if (value !== undefined && value !== '') query.set(key, String(value)) }); return query }
+export function serializeParams(params: Params) {
+  const b2bKeys = new Set(['segmentos', 'catalog_version', 'cnaes', 'atividade_escopo', 'inicio_atividade_de', 'inicio_atividade_ate', 'situacao_evento_de', 'situacao_evento_ate'])
+  const query = new URLSearchParams()
+  Object.entries(params).forEach(([key, value]) => { if (value !== undefined && (value !== '' || b2bKeys.has(key))) query.set(key, String(value)) })
+  return query
+}
 export function createCnpjApi(client: AxiosInstance = apiClient) {
   const get = async <T>(path: string, params: Params | undefined, signal?: AbortSignal) => (await client.get<T>(PREFIX + path, { params: params ? serializeParams(params) : undefined, signal })).data
   return {
+    segments: (signal?: AbortSignal) => get<SegmentCatalog>('segmentos/', undefined, signal),
+    establishmentMapResults: (params: EstablishmentFilters, signal?: AbortSignal) => get<EstablishmentMapResults>('estabelecimentos/mapa/resultados/', params, signal),
     search: (params: BusinessSearchFilters, signal?: AbortSignal) => get<FastPage<BusinessSearchItem>>('busca/', params, signal),
     locationFacets: (params: LocationFacetFilters, signal?: AbortSignal) => get<CountedPage<LocationFacetItem>>('busca/facetas/localidades/', params, signal),
     establishments: (params: EstablishmentFilters, signal?: AbortSignal) => get<Paginated<EstablishmentListItem>>('estabelecimentos/', params, signal),

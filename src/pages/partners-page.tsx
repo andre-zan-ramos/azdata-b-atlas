@@ -1,3 +1,4 @@
+import { B2B_FILTER_KEYS } from '../components/cnpj-b2b-filters'
 import { useQuery } from '@tanstack/react-query'
 import { FormEvent, useEffect, useId, useState } from 'react'
 import { Link, useLocation, useSearchParams } from 'react-router'
@@ -86,7 +87,7 @@ export function PartnersPage() {
   const changeMode = (value: TextMatchMode) => { const next = new URLSearchParams(search); next.set('q_modo', value); next.set('page', '1'); setSearch(next) }
 
   return <section className="search-page">
-    <AreaModeSwitcher mode={mode} compatibleKeys={[...PARTNER_MAP_FILTER_KEYS, 'page', 'return_to']} />
+    <AreaModeSwitcher mode={mode} compatibleKeys={[...PARTNER_MAP_FILTER_KEYS.filter(key => !(B2B_FILTER_KEYS as readonly string[]).includes(key)), 'page', 'return_to']} />
     {mode === 'mapa' ? <PartnerMapMode /> : <>
     <form className={`unified-search${term ? ' compact' : ''}`} onSubmit={submit} role="search">
       <label htmlFor="partner-search">Encontre um sócio</label>

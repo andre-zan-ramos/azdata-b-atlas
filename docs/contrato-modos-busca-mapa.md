@@ -4,6 +4,12 @@ Status: proposta consolidada para implementação faseada
 Escopo: B-Atlas, AzData API e contratos necessários de geolocalização
 Data: 2026-09-30
 
+Evolução CNPJ B2B em 2026-10-05: `cnpj-filtros-b2b.md` documenta segmentos
+explícitos, escopo de atividade, dois intervalos independentes e alternativa
+contextual Empresas. Não há filtro mínimo obrigatório novo enquanto a política
+permanece pendente. Preservar identidades, universo e limites de snapshot;
+esta evolução não encerra as pendências da Fase 6.
+
 ## 1. Objetivo
 
 As três áreas principais do B-Atlas — **Empresas**, **Sócios** e **Obras** — passam a oferecer dois modos de visualização dentro da própria área:

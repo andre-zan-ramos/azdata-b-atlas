@@ -7,7 +7,7 @@ export function participationDetailPath(item: PartnerMapItem, returnTo: string) 
 
 export function compatiblePartnerMap(map: PartnerMapResponse, list: PartnerMapResults) {
   const keys = new Set([...Object.keys(map.filters), ...Object.keys(list.filters)])
-  return map.release !== null && map.release === list.release && map.coverage.points_match_results === true && [...keys].every(key => map.filters[key] === list.filters[key])
+  return JSON.stringify(map.b2b_context) === JSON.stringify(list.b2b_context) && map.release !== null && map.release === list.release && map.coverage.points_match_results === true && [...keys].every(key => map.filters[key] === list.filters[key])
 }
 
 export function validPartnerPoint(item: PartnerMapItem) {

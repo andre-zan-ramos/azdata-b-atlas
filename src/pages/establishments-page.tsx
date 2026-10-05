@@ -1,3 +1,4 @@
+import { B2B_FILTER_KEYS, CnpjB2BFilters, applyB2BForm, repeatedB2BParams } from '../components/cnpj-b2b-filters'
 import { useQuery } from '@tanstack/react-query'
 import { FormEvent, lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import { Link, useLocation, useSearchParams } from 'react-router'
@@ -6,26 +7,28 @@ import { listStates } from '../api/ibge/territories'
 import { cnpjApi } from '../api/receita-federal/cnpj/client'
 import { adaptPage, pageFromSearch } from '../api/receita-federal/cnpj/pagination'
 import { isInvalidTextMatchMode, textMatchModeFromSearch } from '../api/receita-federal/cnpj/match-mode'
-import type { BusinessSearchFilters, EstablishmentFilters, EstablishmentMapFilters, PageSize, TextMatchMode } from '../api/receita-federal/cnpj/types'
+import type { B2BFilters, BusinessSearchFilters, EstablishmentFilters, EstablishmentMapFilters, PageSize, TextMatchMode } from '../api/receita-federal/cnpj/types'
 import { LocationFacetFilter } from '../components/location-facet-filter'
 import { Pagination } from '../components/pagination'
 import { Empty, QueryError } from '../components/query-state'
 import { TextMatchModeSelect } from '../components/text-match-mode-select'
 import { AreaModeSwitcher, useAreaMode } from '../components/area-mode-switcher'
 import { formatCnpj } from '../utils/format'
+import { canonicalFilters } from '../utils/cnpj-map-context'
 
 const PAGE_SIZE: PageSize = 10
 const FILTER_KEYS = ['uf', 'municipio', 'cnae', 'situacao_cadastral', 'matriz_filial', 'porte', 'natureza_juridica'] as const
 const TerritoryMap = lazy(() => import('../components/establishment-territory-map').then(module => ({ default: module.EstablishmentTerritoryMap })))
 
-function EstablishmentMapMode({ filters, page, onPage }: { filters: Pick<BusinessSearchFilters, typeof FILTER_KEYS[number]>; page: number; onPage: (page: number) => void }) {
+function EstablishmentMapMode({ filters, page, onPage }: { filters: Pick<BusinessSearchFilters, typeof FILTER_KEYS[number]> & B2BFilters; page: number; onPage: (page: number) => void }) {
   const [search, setSearch] = useSearchParams()
+  const repeatedFilters = repeatedB2BParams(search)
   const location = useLocation()
   const mapFilters = filters as EstablishmentMapFilters
   const listParams: EstablishmentFilters = { ...filters, page, page_size: PAGE_SIZE }
   const states = useQuery({ queryKey: ['ibge', 'establishment-states'], queryFn: ({ signal }) => listStates(signal), staleTime: 86400000, retry: false })
-  const list = useQuery({ queryKey: ['cnpj', 'map-results', listParams], queryFn: ({ signal }) => cnpjApi.establishments(listParams, signal) })
-  const map = useQuery({ queryKey: ['cnpj', 'establishment-map', mapFilters], queryFn: ({ signal }) => cnpjApi.establishmentMap(mapFilters, signal), retry: false })
+  const list = useQuery({ queryKey: ['cnpj', 'map-results', listParams], enabled: !repeatedFilters, queryFn: ({ signal }) => cnpjApi.establishmentMapResults(listParams, signal), retry: false })
+  const map = useQuery({ queryKey: ['cnpj', 'establishment-map', mapFilters], enabled: !repeatedFilters, queryFn: ({ signal }) => cnpjApi.establishmentMap(mapFilters, signal), retry: false })
   const view = list.data && adaptPage(list.data, page, PAGE_SIZE)
   const stateNames = useMemo(() => new Map((states.data ?? []).map(state => [String(state.id), state.nome])), [states.data])
   const territories = map.data?.territories ?? []
@@ -46,13 +49,26 @@ function EstablishmentMapMode({ filters, page, onPage }: { filters: Pick<Busines
     if (filters.uf && municipality && territories.filter(item => item.codigo_ibge === ibgeCode).length === 1) applyTerritory(filters.uf, municipality.codigo)
   }
   const returnTo = location.pathname + location.search
-  const matchingFilters = map.data && JSON.stringify(Object.entries(map.data.filters).sort()) === JSON.stringify(Object.entries(mapFilters).sort())
-  const points = !map.isError && matchingFilters ? (map.data?.points ?? []).filter(point => point.release === map.data?.release) : []
+  const applyFilters = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    const data = new FormData(event.currentTarget)
+    const next = new URLSearchParams(search)
+    for (const key of FILTER_KEYS.filter(key => key !== 'uf' && key !== 'municipio')) {
+      const value = String(data.get(key) ?? '').trim()
+      if (value) next.set(key, value); else next.delete(key)
+    }
+    applyB2BForm(data, next)
+    next.set('page', '1'); setSearch(next)
+  }
+  const matchingContext = map.data && list.data && map.data.release !== null && map.data.release === list.data.release && JSON.stringify(map.data.b2b_context) === JSON.stringify(list.data.b2b_context) && JSON.stringify(Object.entries(map.data.filters).sort()) === JSON.stringify(Object.entries(list.data.filters).sort())
+  const matchingFilters = map.data && canonicalFilters(map.data.filters) === canonicalFilters(mapFilters)
+  const points = !repeatedFilters && !map.isError && !list.isError && matchingFilters && matchingContext ? (map.data?.points ?? []).filter(point => point.release === map.data?.release) : []
   return <div className="cno-explorer">
-    <aside className="filter-card partner-map-filters"><h1>Mapa de Empresas</h1><p>Explore estabelecimentos por território.</p><label>UF<select aria-label="UF" value={filters.uf ?? ''} onChange={event => applyTerritory(event.target.value)}><option value="">Brasil</option>{(states.data ?? []).map(state => <option key={state.id} value={state.sigla}>{state.sigla} · {state.nome}</option>)}</select></label><label>Município<select aria-label="Município" value={filters.municipio ?? ''} disabled={!filters.uf || map.isPending} onChange={event => applyTerritory(filters.uf ?? '', event.target.value)}><option value="">Todos</option>{territories.map(item => <option key={item.codigo} value={item.codigo}>{item.descricao}</option>)}</select></label>{states.isError ? <QueryError error={states.error} retry={() => void states.refetch()} /> : null}</aside>
+    {repeatedFilters ? <p role="alert">A URL contém parâmetros B2B repetidos. Revise e aplique os filtros para consultar.</p> : null}
+    <aside className="filter-card partner-map-filters"><h1>Mapa de Empresas</h1><p>Explore estabelecimentos por território.</p><label>UF<select aria-label="UF" value={filters.uf ?? ''} onChange={event => applyTerritory(event.target.value)}><option value="">Brasil</option>{(states.data ?? []).map(state => <option key={state.id} value={state.sigla}>{state.sigla} · {state.nome}</option>)}</select></label><label>Município<select aria-label="Município" value={filters.municipio ?? ''} disabled={!filters.uf || map.isPending} onChange={event => applyTerritory(filters.uf ?? '', event.target.value)}><option value="">Todos</option>{territories.map(item => <option key={item.codigo} value={item.codigo}>{item.descricao}</option>)}</select></label>{states.isError ? <QueryError error={states.error} retry={() => void states.refetch()} /> : null}<form key={search.toString()} onSubmit={applyFilters}><CnpjB2BFilters search={search} /><label>CNAE principal exato (legado)<input name="cnae" defaultValue={filters.cnae ?? ''} /></label><label>Situação cadastral (código; opcional)<input name="situacao_cadastral" defaultValue={filters.situacao_cadastral ?? ''} /></label><label>Matriz/filial (código)<input name="matriz_filial" defaultValue={filters.matriz_filial ?? ''} /></label><label>Porte (código)<input name="porte" defaultValue={filters.porte ?? ''} /></label><label>Natureza jurídica (código)<input name="natureza_juridica" defaultValue={filters.natureza_juridica ?? ''} /></label><button>Aplicar filtros</button></form></aside>
     <div>
       <section className="cno-map-card" aria-label="Explorar estabelecimentos no mapa"><div className="cno-map-heading"><div><h2>{selectedMunicipality?.descricao ?? (filters.uf ? `Municípios de ${filters.uf}` : 'Explore o Brasil')}</h2><p>Clique em {filters.uf ? 'um município' : 'uma UF'} para aplicar a consulta imediatamente.</p></div>{filters.uf ? <button type="button" onClick={() => applyTerritory('')}>Voltar ao Brasil</button> : null}</div>{map.isFetching ? <p role="status" className="cno-map-caption">Carregando cobertura cartográfica…</p> : null}{map.isError ? <QueryError error={map.error} retry={() => void map.refetch()} /> : null}{map.data?.release === null ? <p role="status">Publicação CNPJ indisponível para o mapa.</p> : null}{map.data && map.data.points.length === 0 ? <p role="status">Nenhum estabelecimento com coordenadas válidas neste recorte.</p> : null}{map.data && !matchingFilters ? <p role="alert">Os filtros publicados pelo mapa diferem do recorte solicitado. Os pontos estão ocultos.</p> : null}<Suspense fallback={<p role="status" className="cno-map-state">Carregando mapa…</p>}><TerritoryMap uf={filters.uf ?? ''} names={filters.uf ? municipalityNames : stateNames} selectedMunicipalityIbge={selectedMunicipality?.codigo_ibge ?? null} points={points} returnTo={returnTo} onState={selectState} onMunicipality={selectMunicipality} /></Suspense>{map.data ? <p className="cno-map-coverage">{map.data.coverage.points_total} pontos para {map.data.coverage.results_total} estabelecimentos · {map.data.coverage.without_coordinates_total} sem coordenadas · release {map.data.release ?? 'indisponível'}.{map.data.coverage.truncated ? ` Exibindo ${map.data.coverage.returned_points} de ${map.data.coverage.points_total} pontos (limite ${map.data.coverage.limit}; máximo ${map.data.coverage.maximum_limit}).` : ' Cobertura cartográfica completa para os pontos válidos do recorte.'}</p> : null}<p className="cno-map-caption">A seleção territorial atualiza mapa e resultados. Estabelecimentos sem coordenadas permanecem na lista. Mapa e lista usam os mesmos filtros territoriais e empresariais; a busca textual pertence ao modo Busca. A lista não declara release: a compatibilidade de publicação entre requisições não pode ser confirmada. Não há garantia de snapshot transacional.</p></section>
-      <section className="cno-results-panel" aria-label="Resultados de estabelecimentos"><div className="results-heading"><h2>Estabelecimentos do recorte</h2></div>{list.isPending ? <p role="status">Carregando resultados…</p> : null}{list.isError ? <QueryError error={list.error} retry={() => void list.refetch()} /> : null}{view?.results.length === 0 ? <Empty /> : null}{view && view.results.length > 0 ? <><div className="table-wrap" tabIndex={0} role="region" aria-label="Resultados textuais"><table><thead><tr><th>Nome</th><th>CNPJ</th><th>Município/UF</th></tr></thead><tbody>{view.results.map(item => <tr key={item.id}><td><Link to={`/receita-federal/cnpj/estabelecimentos/${item.cnpj}?return_to=${encodeURIComponent(returnTo)}`}>{item.nome_fantasia || item.razao_social}</Link></td><td>{formatCnpj(item.cnpj)}</td><td>{item.municipio?.descricao || 'Município não informado'} / {item.uf || 'UF não informada'}</td></tr>)}</tbody></table></div><Pagination page={view.page} pageSize={view.pageSize} count={view.count} previous={view.hasPrevious} next={view.hasNext} onPage={onPage} /></> : null}</section>
+      <section className="cno-results-panel" aria-label="Resultados de estabelecimentos"><div className="results-heading"><h2>Estabelecimentos do recorte</h2></div>{list.isPending && !repeatedFilters ? <p role="status">Carregando resultados…</p> : null}{list.isError ? <QueryError error={list.error} retry={() => void list.refetch()} /> : null}{view?.results.length === 0 ? <Empty /> : null}{view && view.results.length > 0 ? <><div className="table-wrap" tabIndex={0} role="region" aria-label="Resultados textuais"><table><thead><tr><th>Nome</th><th>CNPJ</th><th>Município/UF</th></tr></thead><tbody>{view.results.map(item => <tr key={item.id}><td><Link to={`/receita-federal/cnpj/estabelecimentos/${item.cnpj}?return_to=${encodeURIComponent(returnTo)}`}>{item.nome_fantasia || item.razao_social}</Link></td><td>{formatCnpj(item.cnpj)}</td><td>{item.municipio?.descricao || 'Município não informado'} / {item.uf || 'UF não informada'}</td></tr>)}</tbody></table></div><Pagination page={view.page} pageSize={view.pageSize} count={view.count} previous={view.hasPrevious} next={view.hasNext} onPage={onPage} /></> : null}</section>
     </div>
   </div>
 }
@@ -73,7 +89,8 @@ export function EstablishmentsPage() {
     setSearch(next, { replace: true })
   }, [rawQMode, search, setSearch])
   const page = pageFromSearch(search.get('page'))
-  const filters = Object.fromEntries(FILTER_KEYS.flatMap(key => { const value = search.get(key); return value ? [[key, value]] : [] })) as Pick<BusinessSearchFilters, typeof FILTER_KEYS[number]>
+  const activeFilterKeys = mode === 'mapa' ? [...FILTER_KEYS, ...B2B_FILTER_KEYS] : FILTER_KEYS
+  const filters = Object.fromEntries(activeFilterKeys.flatMap(key => { const value = search.get(key); return value !== null && (value !== '' || (B2B_FILTER_KEYS as readonly string[]).includes(key)) ? [[key, value]] : [] })) as Pick<BusinessSearchFilters, typeof FILTER_KEYS[number]> & B2BFilters
   const params: BusinessSearchFilters = { q: term, q_modo: qMode, ...filters, page, page_size: PAGE_SIZE }
   const query = useQuery({ queryKey: ['cnpj', 'search', params], enabled: mode === 'busca' && Boolean(term), queryFn: ({ signal }) => cnpjApi.search(params, signal) })
   const qError = query.error instanceof ApiError ? query.error.fields?.q?.join(' ') : undefined

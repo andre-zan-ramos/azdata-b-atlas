@@ -119,7 +119,7 @@ def request_once(url, timeout_seconds, sender):
         body = json.loads(payload)
         if not isinstance(body, dict):
             raise ValueError("Resposta JSON não é um objeto.")
-        for key in ("release", "source_file_id", "filters", "coverage", "identity"):
+        for key in ("release", "source_file_id", "filters", "coverage", "identity", "b2b_context"):
             result[key] = body.get(key)
         points = body.get("points")
         result["points_received"] = len(points) if isinstance(points, list) else None

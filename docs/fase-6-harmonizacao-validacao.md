@@ -1,5 +1,11 @@
 # Fase 6 — Harmonização e validação integral
 
+Nota posterior (2026-10-05): `cnpj-filtros-b2b.md` documenta a evolução B2B e a
+nova alternativa contextual Empresas, que declara release/filtros/contexto.
+A limitação histórica da lista Empresas sem envelope é mitigada nesse fluxo;
+não elimina a ausência de snapshot CNPJ nem valida desempenho ou navegador real.
+O restante deste relatório conserva as evidências da entrega de 2026-10-01.
+
 Data: 2026-10-01. Escopo: B-Atlas e AzData API, exclusivamente Fase 6.
 Base B-Atlas: `bfbe2ca` (Fase 5 efetiva); base API: `dbf1c1f`.
 Ambos os worktrees estavam limpos antes das alterações.
