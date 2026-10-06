@@ -9,3 +9,5 @@ coverage/
 *.log
 *.tsbuildinfo
 /var/map-contract-measurements/
+/playwright-report/
+/test-results/

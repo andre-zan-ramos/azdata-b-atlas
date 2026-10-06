@@ -1,5 +1,48 @@
 # Fase 6 — Harmonização e validação integral
 
+## Revisão de conclusão — 06/10/2026
+
+O contrato vigente define **somente Fases 1 a 6**. Não há Fase 7 aprovada.
+A implementação funcional da Fase 6 está entregue; a fase inteira, que inclui
+validação integral e desempenho, **ainda não está concluída**.
+
+| Item do escopo | Estado verificado |
+| --- | --- |
+| Responsividade, estados e linguagem | Implementados; suíte frontend e seis fluxos em navegador com fixtures |
+| Acessibilidade do seletor, filtros, popup e alternativa textual | Controles semânticos, foco visível, regiões tabulares e teclado implementados; marcadores e seleção municipal verificados em Chromium |
+| Acentuação/mojibake | Conferência UTF-8/mojibake dos arquivos desta entrega; build TypeScript/Vite |
+| Navegação, retorno, URL e telas estreitas | Implementados e cobertos por regressões; navegador cobre os três modos, retorno/histórico/recarga CNO e estado/paginação Sócios |
+| Volume dos contratos cartográficos | Testes isolados de 501 registros e limites presentes na API; evidência anterior documentada, não benchmark |
+| Desempenho e integração operacional | Pendentes de aceite: relatórios anteriores da API registram COUNT interrompido em Empresas/Sócios, sem comprovar o fluxo cartográfico completo com latência aceitável |
+
+Validação desta revisão: **239 testes frontend em 25 arquivos**, **12 testes
+Chromium em 33,7 segundos**, build TypeScript/Vite e conferência UTF-8/mojibake
+passaram. Nenhum teste ou medição contra a API/banco operacional foi executado.
+
+API inspecionada sem alterações: a asserção OpenAPI CNO já compara os oito paths
+vigentes. O código continua preservando identidade, cobertura, paginação,
+publicação e limites; testes de volume não eliminam os timeouts operacionais.
+As evidências de desempenho são históricas de 05/10/2026 e não foram renovadas
+com consultas ao banco nesta revisão.
+
+Antes do aceite integral, completar a verificação operacional delimitada dos
+mapas com resultados/latência e as lacunas relevantes de interface ampliada
+(painel CNAE aberto/409 e navegação de detalhe Empresas/Sócios). Isso é fechamento
+da Fase 6, sem ampliação de semântica. Próxima thread:
+[prompt-fase-6-fechamento.md](prompt-fase-6-fechamento.md).
+
+## Validação curta em navegador — 06/10/2026
+
+**12 testes Playwright aprovados em Chromium real**, com um worker, sem retries
+e em aproximadamente 1 minuto e 12 segundos. Empresas/Sócios/Obras em Busca/Mapa
+a 1440/375 px, teclado dos popups e seleção municipal, retorno/histórico/recarga
+de Obras, paginação/estado separado e falha cartográfica de Sócios.
+API, IBGE e tiles usam fixtures pequenas; nenhuma chamada operacional ou escrita
+em banco. Configuração, capturas, limites e comandos: [testes-navegador.md](testes-navegador.md).
+Há evidência de navegador real neste escopo. Integração operacional, desempenho
+e os fluxos não cobertos seguem pendentes; **não há aceite integral**.
+Os registros abaixo descrevem o estado anterior a esta validação.
+
 ## Retomada CNAE/CONCLA — 06/10/2026
 
 Integração oficial implementada somente no B-Atlas sobre `a969cf0`, consumindo

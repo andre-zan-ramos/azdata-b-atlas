@@ -36,6 +36,19 @@ npm run preview
 ```
 
 `npm test` mantém os testes em watch. O build sai em `dist/`; preview usa 4176.
+
+Testes curtos em navegador real (Chromium, um worker, sem acesso ao banco):
+
+```sh
+npx playwright install chromium --only-shell
+npm run test:browser
+```
+
+O Playwright inicia e encerra seu próprio Vite em `127.0.0.1:45177` e intercepta
+API, IBGE e tiles com fixtures pequenas. Relatório e capturas ficam em
+`playwright-report/`; traces de falhas em `test-results/`. Esses diretórios são
+ignorados pelo Git. Escopo e evidências: [testes de navegador](docs/testes-navegador.md).
+
 Na hospedagem estática, encaminhe rotas de página desconhecidas para `index.html`
 para permitir acesso direto às rotas da SPA. A API separada deve autorizar a
 origem do frontend via CORS quando necessário. Não há proxy nem backend local.
