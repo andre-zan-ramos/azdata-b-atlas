@@ -1,6 +1,7 @@
 import { test as base, expect } from '@playwright/test'
 import type { BusinessSearchItem, EstablishmentMapPoint, GroupedPartnerSearchItem, PartnerMapItem } from '../src/api/receita-federal/cnpj/types'
 import { detail, fastPage, work } from '../src/test/cno-fixtures'
+import { cnaeCatalog, cnaeNode, cnaePage, publication } from '../src/test/cnae-fixtures'
 
 const release = 'browser-fixture'
 const municipality = { codigo: '4123', codigo_ibge: '3106200', descricao: 'Belo Horizonte', uf: 'MG' }
@@ -33,23 +34,32 @@ export interface BrowserEvidence {
   unexpected: string[]
   errors: string[]
   failPartnerMap: boolean
+  cnaeChanged: boolean
+  mapState: 'normal' | 'empty' | 'unavailable' | 'truncated'
 }
 
 export const test = base.extend<{ evidence: BrowserEvidence }>({
   evidence: [async ({ context, page }, use, testInfo) => {
-    const evidence: BrowserEvidence = { requests: [], unexpected: [], errors: [], failPartnerMap: false }
+    const evidence: BrowserEvidence = { requests: [], unexpected: [], errors: [], failPartnerMap: false, cnaeChanged: false, mapState: 'normal' }
     page.on('pageerror', error => evidence.errors.push(error.message))
     page.on('response', response => {
       const url = new URL(response.url())
       const expectedFailure = evidence.failPartnerMap && url.origin === 'http://127.0.0.1:9'
         && url.pathname === '/api/v1/receita-federal/cnpj/socios/mapa/' && response.status() === 503
-      if (response.status() >= 400 && !expectedFailure) evidence.errors.push(`HTTP ${response.status()} ${url.origin}${url.pathname}`)
+      const expectedConflict = evidence.cnaeChanged && url.origin === 'http://127.0.0.1:9' && url.pathname === '/api/v1/ibge/cnae/nos/' && response.status() === 409
+      if (response.status() >= 400 && !expectedFailure && !expectedConflict) evidence.errors.push(`HTTP ${response.status()} ${url.origin}${url.pathname}`)
     })
     // Browser resource-error messages are checked through response statuses above.
     page.on('console', message => { if (message.type() === 'error' && !message.text().startsWith('Failed to load resource:')) evidence.errors.push(message.text()) })
     await context.route('**/*', async route => {
       const request = route.request(), url = new URL(request.url())
       const json = (body: unknown, status = 200) => route.fulfill({ status, json: body, headers: { 'access-control-allow-origin': '*' } })
+      // Existing detail pages issue read-only judicial searches using POST. Only these
+      // two exact fixture routes are allowed; geolocation and other writes stay blocked.
+      if (url.origin === 'http://127.0.0.1:9' && request.method() === 'POST' && /^\/api\/v1\/judicial\/tjmg\/processes\/by-(document|party-name)\/$/.test(url.pathname)) {
+        evidence.requests.push({ method: 'POST', path: url.pathname, params: {} })
+        return json({ source_total: 0, page: 1, page_size: 10, has_next: false, has_previous: false, returned_count: 0, duplicates_removed: 0, results: [] })
+      }
       if (request.method() !== 'GET') {
         evidence.unexpected.push(`${request.method()} ${url.pathname}`)
         return json({ detail: 'Writes are blocked by browser tests.' }, 405)
@@ -73,12 +83,23 @@ export const test = base.extend<{ evidence: BrowserEvidence }>({
       const prefix = '/api/v1/receita-federal/'
       const filters = Object.fromEntries([...url.searchParams].filter(([key]) => !['page', 'page_size', 'include_total', 'limit'].includes(key)))
       const pageNumber = Number(params.page ?? 1)
+      if (url.pathname === '/api/v1/ibge/cnae/catalogo/') return json({ ...cnaeCatalog, publication_id: evidence.cnaeChanged ? 'b'.repeat(64) : publication })
+      if (url.pathname === '/api/v1/ibge/cnae/nos/') {
+        if (evidence.cnaeChanged && params.publication_id === publication) return json({ code: 'publication_mismatch', detail: 'Publicação substituída no teste.' }, 409)
+        return json(cnaePage([cnaeNode], { next: `/api/v1/ibge/cnae/nos/?nivel=subclasse&page=2&publication_id=${publication}` }))
+      }
+      const activeRelease = evidence.mapState === 'unavailable' ? null : release
+      const stateCoverage = evidence.mapState === 'empty' || evidence.mapState === 'unavailable'
+        ? { ...coverage, results_total: 0, points_total: 0, without_coordinates_total: 0, returned_points: 0 }
+        : evidence.mapState === 'truncated' ? { ...coverage, limit: 1, truncated: true, points_total: 2, without_coordinates_total: 0 } : coverage
       switch (url.pathname) {
+        case `${prefix}cnpj/estabelecimentos/00123456000100/`: return json({ ...establishment, empresa: partner.company, cnpj_ordem: '0001', cnpj_dv: '00', cnaes_secundarios: [], socios: [], geolocation: geo })
+        case `${prefix}cnpj/socios/participacoes/7/`: return json({ release, participation: { ...partner.participation, ...partner.partner, empresa: partner.company } })
         case `${prefix}cnpj/segmentos/`: return json({ catalog_version: 'test-v1', classification_version: 'CNAE-Subclasses 2.3', reviewed_at: '2026-10-06', source: 'fixture', secondary_available: false, segments: [] })
         case `${prefix}cnpj/busca/`: return json(fastPage([business], pageNumber))
         case `${prefix}cnpj/socios/`: return json(fastPage([grouped], pageNumber))
-        case `${prefix}cnpj/estabelecimentos/mapa/`: return json({ release, identity: { record: 'establishment', key: 'cnpj' }, filters, b2b_context: contextB2B, territories: [municipality], coverage, points: [point] })
-        case `${prefix}cnpj/estabelecimentos/mapa/resultados/`: return json({ ...fastPage([establishment, { ...establishment, id: 10, cnpj: '00123456000200' }], pageNumber), release, filters, b2b_context: contextB2B })
+        case `${prefix}cnpj/estabelecimentos/mapa/`: return json({ release: activeRelease, identity: { record: 'establishment', key: 'cnpj' }, filters, b2b_context: contextB2B, territories: [municipality], coverage: stateCoverage, points: stateCoverage.returned_points ? [point] : [] })
+        case `${prefix}cnpj/estabelecimentos/mapa/resultados/`: return json({ ...fastPage(stateCoverage.results_total ? [establishment, { ...establishment, id: 10, cnpj: '00123456000200' }] : [], pageNumber), release: activeRelease, filters, b2b_context: contextB2B })
         case `${prefix}cnpj/socios/mapa/`:
           if (evidence.failPartnerMap) return json({ detail: 'Mapa indisponível no teste.' }, 503)
           return json({ release, identity: { record: 'participation_establishment', key: ['release', 'participation_id', 'establishment_id', 'cnpj'] }, filters, territories: [municipality], coverage: { ...coverage, results_total: 2, points_total: 2, without_coordinates_total: 0, returned_points: 2, unit: 'participation_establishment' }, points: [partner, secondPartner] })

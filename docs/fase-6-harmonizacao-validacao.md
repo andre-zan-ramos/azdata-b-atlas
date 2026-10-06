@@ -1,5 +1,53 @@
 # Fase 6 — Harmonização e validação integral
 
+## Fechamento independente de frontend — 06/10/2026
+
+Bases confirmadas: B-Atlas `560221e`, API `5952cef`; ambos os worktrees limpos
+no início. Os dez documentos solicitados foram lidos. O contrato contém somente
+Fases 1–6. Não foi encontrada ausência de implementação funcional obrigatória
+no escopo frontend desta revisão. Nenhum código de produto/API/produtor mudou.
+
+| Critério finito | Implementação | Validação isolada | Aceitação operacional |
+| --- | --- | --- | --- |
+| Seis telas, 1440/375 px, teclado e seleção municipal | Entregue | 12 cenários Chromium revalidados após mudança das fixtures | Não certificam API/IBGE/tiles reais |
+| CNAE aberto em 375 px, seleção, 409/reinício consciente | Entregue | Novo cenário Chromium e captura inspecionada; duplicatas/zero inicial conservados, sem reinício automático | Publicação operacional não revalidada |
+| Retorno de detalhe Empresas/Sócios com URL/filtros/página | Entregue | Dois cenários Chromium com recarga e ID/release da participação; Obras já coberto | Detalhes operacionais não revalidados |
+| Vazio, publicação indisponível, truncamento e lista preservada | Entregue | Três cenários Chromium Empresas; 503/lista Sócios e relações no popup já cobertos | Cobertura real desconhecida |
+| Universo, identidade, limites e contexto mapa/lista | Entregue conforme contratos | Regressões anteriores frontend/API, inclusive 501 registros; sem mudança que exija repetir Vitest/API | Pendente relatório completo dos seis GETs com metadados/identidades/cobertura |
+| PostgreSQL, latência e recursos | Sem otimização autorizada nesta revisão | Volume isolado não mede desempenho | Pendente timeout efetivo, respostas completas, logs de etapas/recursos e critério aprovado de latência |
+
+Lista de verificações ainda necessárias, sem matriz combinatória:
+
+1. Confirmar limites efetivos de SQL e requisição no servidor antes do ensaio.
+   Ausência dessa capacidade é preparação operacional pendente da API.
+2. Fornecer relatórios dos seis endpoints municipais e término no servidor;
+   avaliar filtros/release/contexto, cobertura, identidades e coordenadas do
+   estabelecimento/ocorrência. Primeira falha deixa restantes não medidos.
+   Zero pontos não comprova percurso operacional com localização válida.
+3. Fornecer evidência operacional datada do catálogo CNAE e renderização real,
+   incluindo disponibilidade das referências externas utilizadas. Fixtures
+   não certificam serviços operacionais ou contraste/acessibilidade integral.
+4. Avaliar latências/etapas e recursos nos logs, aprovar explicitamente o critério
+   de latência de produto e encaminhar falhas/incompatibilidades à API. Ensaio
+   restrito não aprova todos os volumes nem consultas municipais amplas.
+
+Plano e handoff: [fase-6-plano-operacional.md](fase-6-plano-operacional.md).
+Executor reutiliza transporte existente; seis GETs no máximo, sem retries ou
+paginação acumulada, validado somente offline. Confirmação dos limites do servidor
+é obrigatória antes de HTTP. Sem HTTP operacional, SQL, benchmarks, migrations,
+cargas, manutenção ou índices nesta revisão; sem commit/push. Evidências
+operacionais continuam sendo as de 01/10 e 05/10 consolidadas na API, não
+renovadas em 06/10. Perfis pararam em COUNT; timeout cliente não prova cancelamento.
+
+Validação atual: **6 novos testes Chromium em 28,8 s** e **12 regressões Chromium
+em 52,1 s**, rodadas separadas, um worker, zero retries; build TypeScript/Vite
+aprovado. Captura CNAE 375 px inspecionada.
+`UTF-8` estrito, mojibake, espaços finais e `git diff --check` conferidos;
+plano, bloqueio antes de HTTP e relatórios mapa/lista validados offline.
+Evidências/limites em [testes-navegador.md](testes-navegador.md). Fechamento independente de frontend
+no escopo solicitado concluído com fixtures; **aceite integral não concedido**.
+Os registros abaixo são históricos e não substituem esta matriz atual.
+
 ## Revisão de conclusão — 06/10/2026
 
 O contrato vigente define **somente Fases 1 a 6**. Não há Fase 7 aprovada.

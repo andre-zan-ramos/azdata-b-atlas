@@ -122,8 +122,15 @@ def request_once(url, timeout_seconds, sender):
         for key in ("release", "source_file_id", "filters", "coverage", "identity", "b2b_context"):
             result[key] = body.get(key)
         points = body.get("points")
+        results = body.get("results")
+        result["records"] = points if isinstance(points, list) else results if isinstance(results, list) else None
         result["points_received"] = len(points) if isinstance(points, list) else None
-        result["ok"] = 200 <= response.code < 300 and isinstance(points, list) and isinstance(body.get("coverage"), dict)
+        result["results_received"] = len(results) if isinstance(results, list) else None
+        for key in ("count", "page", "page_size", "has_next", "has_previous", "next", "previous"):
+            if key in body:
+                result[key] = body[key]
+        is_map = urlsplit(url).path.endswith("/mapa/")
+        result["ok"] = 200 <= response.code < 300 and (isinstance(points, list) and isinstance(body.get("coverage"), dict) if is_map else isinstance(results, list))
         if not result["ok"]:
             result["error"] = f"HTTP {response.code} ou envelope cartográfico inválido."
     except Exception as error:
