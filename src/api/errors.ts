@@ -23,9 +23,9 @@ export function normalizeApiError(error: unknown): Error {
     const detail = [body.detalhe, body.detail, body.message].find(
       (value): value is string => typeof value === 'string' && value.trim().length > 0,
     )
-    const code = typeof body.codigo === 'string' ? body.codigo : undefined
+    const code = typeof body.codigo === 'string' ? body.codigo : typeof body.code === 'string' ? body.code : undefined
     const fields = Object.fromEntries(Object.entries(body).flatMap(([key, value]) => {
-      if (['detalhe', 'detail', 'message', 'codigo'].includes(key)) return []
+      if (['detalhe', 'detail', 'message', 'codigo', 'code'].includes(key)) return []
       const messages = Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string') : typeof value === 'string' ? [value] : []
       return messages.length ? [[key, messages]] : []
     }))

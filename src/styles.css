@@ -314,6 +314,17 @@ button.facet-option:hover { background: #f4f7f4; }
 .partner-map-popup article { border-top: 1px solid #d9e3de; margin-top: .7rem; padding-top: .7rem; }
 
 /* Shared Busca / Mapa interaction and narrow-screen layout. */
+.cnae-catalog { display: grid; gap: 12px; min-width: 0; margin-top: 12px; padding: 12px; border: 1px solid var(--line); border-radius: 8px; }
+.cnae-catalog h3 { margin: 0; }
+.cnae-catalog pre { max-width: 100%; max-height: 300px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; }
+.cnae-catalog button { max-width: 100%; white-space: pre-wrap; overflow-wrap: anywhere; text-align: left; }
+.cnae-catalog h3 { white-space: pre-wrap; overflow-wrap: anywhere; }
+.cnae-catalog p, .cnae-publication { overflow-wrap: anywhere; }
+.cnae-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.cnae-results { display: grid; gap: 12px; padding-left: 18px; }
+.cnae-results li { min-width: 0; }
+.cnae-metadata { display: grid; gap: 8px; }
+.cnae-catalog input, .cnae-catalog select { min-width: 0; width: 100%; }
 .cno-explorer > * { min-width: 0; }
 .cno-map-heading { flex-wrap: wrap; }
 .cno-map-coverage, .cno-map-caption { overflow-wrap: anywhere; line-height: 1.6; }

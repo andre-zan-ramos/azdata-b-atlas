@@ -1,5 +1,11 @@
 # Filtros cartográficos CNPJ B2B
 
+Evolução em 06/10/2026: `cnae-ibge-frontend.md` descreve consulta assistida ao
+catálogo oficial IBGE/CONCLA em Empresas e Sócios no modo Mapa. Seleciona somente
+subclasses literais no rascunho de `cnaes`, sem aplicar consultas pesadas até
+Aplicar filtros. IBGE, `CnaeRf` e `b2b-v1` permanecem separados; erros Receita
+conservam seleção e secundárias dependem exclusivamente da certificação API.
+
 2026-10-05. Contrato API: `docs/cnpj-filtros-b2b-implementacao.md` no checkout API.
 Complementa modos Busca/Mapa; não declara aceite integral Fase 6.
 
@@ -32,9 +38,10 @@ Não foi executado nesta entrega. Falha para a sequência sem retry, preservando
 relatório; timeout não confirma cancelamento SQL. Metas de desempenho, profile
 SQL e navegador real seguem pendentes.
 
-ETL recomendado no Repositórios para classificação oficial/hierarquia e publicação
-local; mapeamento editorial versionado continua revisão de produto. A API não
-consulta documento externo em cada GET.
+Catálogo oficial/hierarquia já publicado pelo produtor e exposto na API em
+`5952cef`, integrado no B-Atlas na retomada de 06/10/2026. Mapeamento editorial
+versionado continua revisão de produto. A API não consulta documento externo
+em cada GET. As evidências abaixo pertencem à entrega B2B original.
 
 Validação final: 204 testes em 23 arquivos passaram com `--maxWorkers=1`; build
 e `git diff --check` passaram. O piloto teve somente seu plano offline validado.

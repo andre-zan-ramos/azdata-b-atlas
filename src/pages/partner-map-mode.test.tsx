@@ -6,6 +6,10 @@ import { cnpjApi } from '../api/receita-federal/cnpj/client'
 import type { PartnerMapItem, PartnerMapResponse, PartnerMapResults } from '../api/receita-federal/cnpj/types'
 import { Providers } from '../app/providers'
 import { PartnersPage } from './partners-page'
+import { cnaeApi } from '../api/ibge/cnae/client'
+import { cnaeCatalog, cnaeNode, cnaePage } from '../test/cnae-fixtures'
+
+vi.mock('../api/ibge/cnae/client', () => ({ cnaeApi: { catalog: vi.fn(), nodes: vi.fn() } }))
 
 vi.mock('../api/receita-federal/cnpj/client', () => ({ cnpjApi: { segments: vi.fn(), partnerMap: vi.fn(), partnerMapResults: vi.fn(), partners: vi.fn(), company: vi.fn(), establishment: vi.fn(), partnerParticipation: vi.fn() } }))
 vi.mock('../api/ibge/territories', () => ({ listStates: vi.fn().mockResolvedValue([{ id: 31, sigla: 'MG', nome: 'Minas Gerais' }]) }))
@@ -30,6 +34,25 @@ function renderPage(url = '/receita-federal/cnpj/socios?modo=mapa') {
 }
 
 describe('Fase 5 — mapa de participações por estabelecimento', () => {
+  it('aplica seleção CNAE literal aos pares somente após envio e restaura pelo histórico', async () => {
+    const user = userEvent.setup()
+    vi.mocked(cnaeApi.catalog).mockResolvedValue(cnaeCatalog)
+    vi.mocked(cnaeApi.nodes).mockResolvedValue(cnaePage([cnaeNode]))
+    renderPage('/receita-federal/cnpj/socios?modo=mapa&uf=MG&page=3')
+    await screen.findAllByText('MARIA SILVA')
+    await user.click(screen.getByRole('button', { name: 'Consultar catálogo oficial CNAE' }))
+    await user.click(await screen.findByRole('button', { name: 'Consultar nós CNAE' }))
+    await user.click(await screen.findByRole('button', { name: 'Selecionar 0010100' }))
+    expect(cnpjApi.partnerMap).toHaveBeenCalledTimes(1); expect(cnpjApi.partnerMapResults).toHaveBeenCalledTimes(1)
+    expect(screen.getByTestId('url')).toHaveTextContent('modo=mapa&uf=MG&page=3')
+    await user.click(screen.getByRole('button', { name: 'Aplicar filtros' }))
+    await waitFor(() => expect(cnpjApi.partnerMap).toHaveBeenLastCalledWith({ uf: 'MG', cnaes: '0010100', atividade_escopo: 'principal' }, expect.any(AbortSignal)))
+    expect(cnpjApi.partnerMapResults).toHaveBeenLastCalledWith({ uf: 'MG', cnaes: '0010100', atividade_escopo: 'principal', page: 1, page_size: 10 }, expect.any(AbortSignal))
+    expect(screen.getAllByRole('link', { name: 'Abrir participação do sócio' })[0].getAttribute('href')).toContain('cnaes%3D0010100')
+    await user.click(screen.getByRole('button', { name: 'Histórico anterior' }))
+    await waitFor(() => expect(screen.getByLabelText(/CNAEs adicionais/)).toHaveValue(''))
+    expect(screen.getByTestId('url')).toHaveTextContent('modo=mapa&uf=MG&page=3')
+  })
   it('aplica os dois intervalos do estabelecimento com o mesmo recorte B2B', async () => {
     const user = userEvent.setup()
     renderPage('/receita-federal/cnpj/socios?modo=mapa&cnaes=5611201&atividade_escopo=principal&inicio_atividade_ate=2026-01-31&situacao_evento_de=2026-02-01&page=3')

@@ -1,5 +1,29 @@
 # Fase 6 — Harmonização e validação integral
 
+## Retomada CNAE/CONCLA — 06/10/2026
+
+Integração oficial implementada somente no B-Atlas sobre `a969cf0`, consumindo
+API `5952cef`/OpenAPI `1.0.0`. Checkout inicial limpo nos dois repositórios.
+Cliente/tipos dos cinco GETs, consulta assistida de subclasses em Empresas/Sócios
+Mapa, hierarquia por FKs, proveniência, correspondências informativas e paginação
+sob demanda. Após 409, cache/detalhes/páginas são descartados e o usuário pode
+reiniciar conscientemente; códigos selecionados permanecem no formulário.
+Sem cascata, retries/polling, publicação CNAE enviada ao CNPJ ou liberação de
+secundárias. Entrega e arquivos: `cnae-ibge-frontend.md`.
+
+Validação final: **239 testes em 25 arquivos passaram** com
+`node node_modules/vitest/vitest.mjs run --maxWorkers=1`; inclui 18 casos de
+cliente CNAE, 15 do painel e integração nas duas páginas. Antes disso, 57 testes
+focados passaram; a revisão acrescentou casos NULL/vazio e 409 entre páginas.
+`npm run build` aprovado (TypeScript/Vite). UTF-8/mojibake e espaços finais
+conferidos nos 17 arquivos alterados; `git diff --check` aprovado.
+Browser CLI indisponível; validação DOM não certifica visual real.
+Sem HTTP/banco operacional, ETL ou migrations/cargas. Revisão, commit e
+sincronização autorizados pelo usuário após a entrega; resultado Git informado
+no fechamento. Navegador real e desempenho operacional permanecem pendentes;
+**não há aceite integral**.
+O relatório histórico abaixo mantém as evidências e limites de sua própria data.
+
 Nota posterior (2026-10-05): `cnpj-filtros-b2b.md` documenta a evolução B2B e a
 nova alternativa contextual Empresas, que declara release/filtros/contexto.
 A limitação histórica da lista Empresas sem envelope é mitigada nesse fluxo;

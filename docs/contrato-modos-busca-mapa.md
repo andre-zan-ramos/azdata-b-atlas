@@ -4,6 +4,12 @@ Status: proposta consolidada para implementação faseada
 Escopo: B-Atlas, AzData API e contratos necessários de geolocalização
 Data: 2026-09-30
 
+Retomada Fase 6 em 2026-10-06: `cnae-ibge-frontend.md` documenta a integração
+somente leitura do catálogo oficial CNAE/CONCLA nos filtros de atividade do
+modo Mapa de Empresas/Sócios. Seleção explícita de subclasses por código
+literal, separada de Receita/segmentos; consultas auxiliares sob demanda e
+reinício consciente após troca de publicação. Mantém as pendências de aceite.
+
 Evolução CNPJ B2B em 2026-10-05: `cnpj-filtros-b2b.md` documenta segmentos
 explícitos, escopo de atividade, dois intervalos independentes e alternativa
 contextual Empresas. Não há filtro mínimo obrigatório novo enquanto a política

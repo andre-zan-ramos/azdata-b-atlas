@@ -8,6 +8,10 @@ import { listStates } from '../api/ibge/territories'
 import type { BusinessSearchItem } from '../api/receita-federal/cnpj/types'
 import { Providers } from '../app/providers'
 import { EstablishmentsPage } from './establishments-page'
+import { cnaeApi } from '../api/ibge/cnae/client'
+import { cnaeCatalog, cnaeNode, cnaePage } from '../test/cnae-fixtures'
+
+vi.mock('../api/ibge/cnae/client', () => ({ cnaeApi: { catalog: vi.fn(), nodes: vi.fn() } }))
 
 vi.mock('../api/ibge/territories', () => ({ listStates: vi.fn().mockResolvedValue([{ id: 31, sigla: 'MG', nome: 'Minas Gerais' }]) }))
 vi.mock('../components/establishment-territory-map', () => ({ EstablishmentTerritoryMap: ({ points, onState, onMunicipality, uf }: { points: unknown[]; onState: (code: string) => void; onMunicipality: (code: string) => void; uf: string }) => <div data-testid="establishment-map" data-points={points.length}><button onClick={() => onState('31')}>Mapa MG</button>{uf ? <button onClick={() => onMunicipality('3106200')}>Mapa Belo Horizonte</button> : null}</div> }))
@@ -23,6 +27,28 @@ function LocationProbe(){const location=useLocation();return <output data-testid
 function renderPage(entry='/receita-federal/cnpj?q=atlas&page=1'){return render(<Providers><MemoryRouter initialEntries={[entry]}><Routes><Route path="/receita-federal/cnpj" element={<><EstablishmentsPage/><LocationProbe/></>}/><Route path="*" element={<LocationProbe/>}/></Routes></MemoryRouter></Providers>)}
 
 describe('busca empresarial unificada',()=>{
+  it('seleção oficial preserva URL até Aplicar, envia apenas códigos ao CNPJ e mantém erro Receita', async () => {
+    const user = userEvent.setup()
+    vi.mocked(cnaeApi.catalog).mockResolvedValue(cnaeCatalog)
+    vi.mocked(cnaeApi.nodes).mockResolvedValue(cnaePage([cnaeNode]))
+    renderPage('/receita-federal/cnpj?modo=mapa&uf=MG&page=3')
+    await screen.findByText('ATLAS')
+    await user.click(screen.getByRole('button', { name: 'Consultar catálogo oficial CNAE' }))
+    await user.click(await screen.findByRole('button', { name: 'Consultar nós CNAE' }))
+    await user.click(await screen.findByRole('button', { name: 'Selecionar 0010100' }))
+    expect(mapMock).toHaveBeenCalledTimes(1); expect(establishmentsMock).toHaveBeenCalledTimes(1)
+    expect(screen.getByTestId('location')).toHaveTextContent('modo=mapa&uf=MG&page=3')
+    establishmentsMock.mockRejectedValue(new ApiError('Códigos indisponíveis no domínio publicado: 0010100', 400, undefined, { cnaes: ['0010100 indisponível'] }))
+    await user.click(screen.getByRole('button', { name: 'Aplicar filtros' }))
+    await waitFor(() => expect(mapMock).toHaveBeenLastCalledWith({ uf: 'MG', cnaes: '0010100', atividade_escopo: 'principal' }, expect.any(AbortSignal)))
+    expect(establishmentsMock).toHaveBeenLastCalledWith({ uf: 'MG', cnaes: '0010100', atividade_escopo: 'principal', page: 1, page_size: 10 }, expect.any(AbortSignal))
+    expect(await screen.findByText('Códigos indisponíveis no domínio publicado: 0010100')).toBeInTheDocument()
+    expect(screen.getByLabelText(/CNAEs adicionais/)).toHaveValue('0010100')
+    await user.click(screen.getByRole('link', { name: 'Busca' }))
+    expect(screen.getByTestId('location').textContent).not.toContain('cnaes=')
+    await user.click(screen.getByRole('link', { name: 'Mapa' }))
+    expect(screen.getByLabelText(/CNAEs adicionais/)).toHaveValue('0010100')
+  })
   it('envia o recorte B2B igual ao mapa e à lista contextual e reinicia a página', async () => {
     const user = userEvent.setup()
     renderPage('/receita-federal/cnpj?modo=mapa&cnaes=5611201&atividade_escopo=principal&inicio_atividade_de=2026-01-01&situacao_evento_ate=2026-02-28&page=3')
