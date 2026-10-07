@@ -33,6 +33,7 @@ export interface BrowserEvidence {
   requests: Array<{ method: string; path: string; params: Record<string, string> }>
   unexpected: string[]
   errors: string[]
+  paginateEstablishments?: boolean
   failPartnerMap: boolean
   cnaeChanged: boolean
   mapState: 'normal' | 'empty' | 'unavailable' | 'truncated'
@@ -101,7 +102,7 @@ export const test = base.extend<{ evidence: BrowserEvidence }>({
         case `${prefix}cnpj/busca/`: return json(fastPage([business], pageNumber))
         case `${prefix}cnpj/socios/`: return json(fastPage([grouped], pageNumber))
         case `${prefix}cnpj/estabelecimentos/mapa/`: return json({ release: activeRelease, identity: { record: 'establishment', key: 'cnpj' }, filters, b2b_context: contextB2B, territories: [municipality], coverage: stateCoverage, points: stateCoverage.returned_points ? [point] : [] })
-        case `${prefix}cnpj/estabelecimentos/mapa/resultados/`: return json({ ...fastPage(stateCoverage.results_total ? [establishment, { ...establishment, id: 10, cnpj: '00123456000200' }] : [], pageNumber), release: activeRelease, filters, b2b_context: contextB2B })
+        case `${prefix}cnpj/estabelecimentos/mapa/resultados/`: return json({ ...fastPage(stateCoverage.results_total ? [establishment, { ...establishment, id: 10, cnpj: '00123456000200' }] : [], pageNumber, evidence.paginateEstablishments === true && pageNumber === 1), release: activeRelease, filters, b2b_context: contextB2B })
         case `${prefix}cnpj/socios/mapa/`:
           if (evidence.failPartnerMap) return json({ detail: 'Mapa indisponível no teste.' }, 503)
           return json({ release, identity: { record: 'participation_establishment', key: ['release', 'participation_id', 'establishment_id', 'cnpj'] }, filters, territories: [municipality], coverage: { ...coverage, results_total: 2, points_total: 2, without_coordinates_total: 0, returned_points: 2, unit: 'participation_establishment' }, points: [partner, secondPartner] })

@@ -2,8 +2,8 @@
 
 Proposta de revisão em 07/10/2026: [contrato-depuracao-filtros-cnpj.md](contrato-depuracao-filtros-cnpj.md)
 define localidade + CNAE e/ou período como mínimo, aplicação explícita,
-seletor CNAE geral e diálogos em Demais consultas. Etapas 1 e 2 implementadas,
-conforme [entrega CNAE geral](entrega-etapa-2-cnae-geral.md); etapas 3 a 5 pendentes;
+seletor CNAE geral e diálogos em Demais consultas. Etapas 1 a 3 implementadas,
+conforme o contrato e a [entrega CNAE geral](entrega-etapa-2-cnae-geral.md); etapas 4 e 5 pendentes;
 as descrições abaixo registram o comportamento anterior.
 
 Evolução em 06/10/2026: `cnae-ibge-frontend.md` descreve consulta assistida ao

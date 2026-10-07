@@ -1,3 +1,5 @@
+import { CnpjPeriodDialog } from './cnpj-period-dialog'
+import { PERIOD_KEYS, readPeriod, periodSummary } from '../utils/cnpj-period'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 import { cnpjApi } from '../api/receita-federal/cnpj/client'
@@ -36,6 +38,9 @@ export function applyB2BForm(data: FormData, next: URLSearchParams) {
 }
 
 export function CnpjB2BFilters({ search, onDraftChange }: { search: URLSearchParams; onDraftChange?: () => void }) {
+  const [period, setPeriod] = useState(() => readPeriod(search))
+  const [periodOpen, setPeriodOpen] = useState(false)
+  const periodTrigger = useRef<HTMLButtonElement>(null)
   const client = useQueryClient()
   const [legacy, setLegacy] = useState(search.get('cnae') ?? '')
   const [segments, setSegments] = useState(search.get('segmentos') ?? '')
@@ -73,10 +78,9 @@ export function CnpjB2BFilters({ search, onDraftChange }: { search: URLSearchPar
     <p>{items.length}/100 CNAEs · {scope === 'principal' ? 'Somente principal' : 'Principal ou secundárias'}</p>
     <ul>{items.map((item, index) => <li key={`${item.codigo}-${index}`}>{item.codigo} · {item.descricao}<button type="button" onClick={() => { setItems(previous => previous.filter((_, position) => position !== index)); onDraftChange?.() }}>Remover {item.codigo}</button></li>)}</ul>
     {open ? <CnaeReceitaDialog trigger={trigger.current} initial={items} scope={scope} secondary={capability.data === true} close={() => setOpen(false)} confirm={(codes, activityScope) => { for (const item of codes) client.setQueryData(['cnpj', 'cnae-label', item.codigo], item); setItems(codes); setScope(activityScope); setOpen(false); onDraftChange?.() }} /> : null}
-    <label>Início de atividade: de<input type="date" name="inicio_atividade_de" defaultValue={search.get('inicio_atividade_de') ?? ''} /></label>
-    <label>Início de atividade: até<input type="date" name="inicio_atividade_ate" defaultValue={search.get('inicio_atividade_ate') ?? ''} /></label>
-    <label>Evento da situação cadastral: de<input type="date" name="situacao_evento_de" defaultValue={search.get('situacao_evento_de') ?? ''} /></label>
-    <label>Evento da situação cadastral: até<input type="date" name="situacao_evento_ate" defaultValue={search.get('situacao_evento_ate') ?? ''} /></label>
-    <p>Limites inclusivos. A data do evento cadastral não é a última atualização geral nem necessariamente a abertura. Datas ausentes não correspondem a um intervalo informado.</p>
+    {PERIOD_KEYS.map(key => <input key={key} type="hidden" name={key} value={period[key]} />)}
+    <button type="button" ref={periodTrigger} onClick={() => setPeriodOpen(true)}>Definir período</button>
+    <p aria-label="Resumo do período">{periodSummary(period)}</p>
+    {periodOpen ? <CnpjPeriodDialog initial={period} trigger={periodTrigger.current} close={() => setPeriodOpen(false)} confirm={next => { setPeriod(next); setPeriodOpen(false); onDraftChange?.() }} /> : null}
   </fieldset>
 }

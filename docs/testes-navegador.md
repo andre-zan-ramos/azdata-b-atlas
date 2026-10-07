@@ -2,6 +2,13 @@
 
 ## Revisão dos filtros — 07/10/2026
 
+`e2e/period.pw.ts` acrescenta seis cenários da Etapa 3: diálogo temporal nas
+duas áreas em 375/1440 px, datas inválidas/invertidas, limites abertos, edição
+isolada, teclado, paginação aplicada com rascunho pendente, recarga, URLs
+bloqueadas, combinação com CNAEs/município e histórico. Smoke adaptado ao diálogo.
+Suíte completa: 28 cenários aprovados com fixtures, um worker e zero retries;
+tráfego operacional bloqueado. Evidência operacional permanece pendente.
+
 `e2e/cnae-general.pw.ts` acrescenta quatro cenários: seletor Receita nas duas
 áreas CNPJ, em 375 e 1440 px. Cobrem busca por descrição no servidor, paginação,
 seleção múltipla, reabertura, rascunho/aplicado, limpeza descartada por Escape,

@@ -1,7 +1,7 @@
 # Prompt — fechamento da Fase 6
 
 Nota de 07/10/2026: o aceite operacional continua pendente. Para evolução da UI,
-o próximo trabalho previsto é a [Etapa 3 — Período](prompt-etapa-3-filtros-cnpj.md).
+o próximo trabalho previsto é a [Etapa 4 — Demais consultas e harmonização](prompt-etapa-4-filtros-cnpj.md).
 Leia também `docs/contrato-depuracao-filtros-cnpj.md`; não execute recortes CNPJ
 incompletos nem use versões antigas dos controles como referência atual.
 

@@ -1,4 +1,5 @@
-﻿import { useQuery } from '@tanstack/react-query'
+import { PERIOD_KEYS, readPeriod, validatePeriod } from './cnpj-period'
+import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { cnpjApi } from '../api/receita-federal/cnpj/client'
 import type { Municipality } from '../api/receita-federal/cnpj/types'
@@ -26,17 +27,9 @@ export function mapEligibility(search: URLSearchParams, municipalities: Municipa
   if (search.has('cnaes') && (get('cnaes').split(',').length > 100 || !get('cnaes').split(',').every(code => /^[0-9]{7}$/.test(code)))) return 'Use até 100 CNAEs literais de sete dígitos.'
   if (search.has('segmentos') && (get('catalog_version') !== 'b2b-v1' || !get('segmentos').split(',').every(code => ['restaurantes', 'academias', 'lanchonetes', 'bares'].includes(code)))) return 'Segmento ou versão de catálogo inválido.'
   if (search.has('catalog_version') && !search.has('segmentos')) return 'Informe segmentos para a versão do catálogo.'
-  let temporal = false
-  for (const prefix of ['inicio_atividade', 'situacao_evento']) {
-    for (const end of ['de', 'ate']) {
-      const value = get(`${prefix}_${end}`)
-      if (!value) continue
-      const date = new Date(`${value}T00:00:00Z`)
-      if (!/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(value) || !Number.isFinite(date.getTime()) || date.toISOString().slice(0, 10) !== value || value.startsWith('0000')) return 'Informe datas válidas.'
-      temporal = true
-    }
-    if (get(`${prefix}_de`) && get(`${prefix}_ate`) && get(`${prefix}_de`) > get(`${prefix}_ate`)) return 'O fim do período deve ser igual ou posterior ao início.'
-  }
+  const periodError = validatePeriod(readPeriod(search))
+  if (periodError) return periodError
+  const temporal = PERIOD_KEYS.some(key => Boolean(get(key)))
   if (!get('cnae') && !get('cnaes') && !get('segmentos') && !temporal) return 'Selecione CNAE e/ou pelo menos um limite temporal válido.'
   if (get('municipio') && (!complete || !municipalities.some(item => item.codigo === get('municipio') && item.uf === get('uf')))) return 'Confirme um município pertencente à UF no domínio Receita.'
   return null

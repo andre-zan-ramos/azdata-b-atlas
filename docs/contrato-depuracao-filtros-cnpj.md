@@ -1,6 +1,6 @@
 # Contrato de revisão dos filtros CNPJ
 
-Data: 07/10/2026. Status: Etapas 1 e 2 implementadas; etapas 3 a 5 pendentes.
+Data: 07/10/2026. Status: Etapas 1 a 3 implementadas; etapas 4 e 5 pendentes.
 Entrega atual: preparação e consultas completas em Empresas e Sócios no modo Mapa.
 
 ## 1. Objetivo e escopo
@@ -247,6 +247,26 @@ os 57 testes das páginas, o build e a checagem staged foram aprovados.
 ## 10. Entrega da Etapa 2 e próxima etapa
 
 O seletor CNAE geral está registrado em [entrega-etapa-2-cnae-geral.md](entrega-etapa-2-cnae-geral.md).
-O prompt da próxima etapa é [Etapa 3 — Período](prompt-etapa-3-filtros-cnpj.md).
+O prompt da próxima etapa é [Etapa 4 — Demais consultas e harmonização](prompt-etapa-4-filtros-cnpj.md).
 Os prompts de implementação já concluída foram retirados; os contratos e
 registros de entrega permanecem como referência.
+
+## 11. Entrega da Etapa 3 — Período, 07/10/2026
+
+Empresas e Sócios no modo Mapa compartilham `CnpjPeriodDialog`. Dois intervalos
+independentes aceitam limites abertos/inclusivos e se combinam por AND.
+Validação de datas reais, formato e inversão é compartilhada com a elegibilidade.
+Edição ISO explícita conserva entradas inválidas para correção; resumo brasileiro.
+Confirmar altera somente o rascunho; Cancelar/Escape descarta; Limpar edita apenas
+a sessão do diálogo. Aplicar continua sendo a única submissão empresarial.
+Histórico, recarga, paginação com edições pendentes e limpeza foram preservados,
+assim como CNAEs, municípios e bloqueios das Etapas 1/2. Nenhuma API nova.
+
+Validação de fechamento: suíte serial completa com 301 testes em 29 arquivos,
+28 cenários Chromium em 375/1440 px, build e checagem staged aprovados.
+Mocks/fixtures bloquearam tráfego operacional. Evidência limitada ao cliente:
+sem comprovação de desempenho API/PostgreSQL ou cancelamento SQL.
+Etapa 4 não implementada; Etapa 5 e aceite operacional Fase 6 pendentes.
+
+O prompt concluído da Etapa 3 e seu relatório separado foram retirados no
+fechamento; este contrato conserva a entrega e o prompt seguinte orienta a Etapa 4.
