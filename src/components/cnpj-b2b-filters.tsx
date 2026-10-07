@@ -20,7 +20,6 @@ export function applyB2BForm(data: FormData, next: URLSearchParams) {
   }
   if (codes) next.set('cnaes', codes)
   if (segments.length || codes) {
-    next.delete('cnae')
     next.set('atividade_escopo', String(data.get('atividade_escopo') ?? ''))
   }
   for (const key of B2B_FILTER_KEYS.filter(key => key.endsWith('_de') || key.endsWith('_ate'))) {
@@ -29,7 +28,7 @@ export function applyB2BForm(data: FormData, next: URLSearchParams) {
   }
 }
 
-export function CnpjB2BFilters({ search }: { search: URLSearchParams }) {
+export function CnpjB2BFilters({ search, onDraftChange }: { search: URLSearchParams; onDraftChange?: () => void }) {
   const [chosenVersion, setChosenVersion] = useState(search.get('catalog_version'))
   const [codes, setCodes] = useState(search.get('cnaes') ?? '')
   const catalog = useQuery({ queryKey: ['cnpj', 'segments'], queryFn: ({ signal }) => cnpjApi.segments(signal), retry: false, staleTime: 300000 })
@@ -42,14 +41,14 @@ export function CnpjB2BFilters({ search }: { search: URLSearchParams }) {
     {catalog.isPending ? <p role="status">Carregando segmentos…</p> : null}
     {catalog.isError ? <QueryError error={catalog.error} retry={() => void catalog.refetch()} /> : null}
     <input type="hidden" name="catalog_version" value={version} />
-    {catalog.data && version !== catalog.data.catalog_version ? <div role="alert"><p>A versão desta seleção difere do catálogo disponível. Revise antes de aplicar.</p><button type="button" onClick={() => setChosenVersion(catalog.data!.catalog_version)}>Usar catálogo {catalog.data.catalog_version}</button></div> : null}
+    {catalog.data && version !== catalog.data.catalog_version ? <div role="alert"><p>A versão desta seleção difere do catálogo disponível. Revise antes de aplicar.</p><button type="button" onClick={() => { setChosenVersion(catalog.data!.catalog_version); onDraftChange?.() }}>Usar catálogo {catalog.data.catalog_version}</button></div> : null}
     {catalog.data?.segments.map(segment => <div key={segment.id}>
       <label><input type="checkbox" name="segmentos" value={segment.id} defaultChecked={selected.includes(segment.id)} />{segment.label}</label>
       <details><summary>CNAEs de {segment.label}</summary><p>{segment.scope}</p><ul>{segment.activities.map(activity => <li key={activity.codigo}>{activity.codigo} · {activity.descricao}</li>)}</ul></details>
     </div>)}
     {unknown.map(id => <label key={id}><input type="checkbox" name="segmentos" value={id} defaultChecked />Segmento indisponível: {id}</label>)}
     <label>CNAEs adicionais (sete dígitos, separados por vírgula)<input name="cnaes" value={codes} onChange={event => setCodes(event.target.value)} /></label>
-    <CnaeCatalogPicker codes={codes} onCodes={setCodes} />
+    <CnaeCatalogPicker codes={codes} onCodes={value => { setCodes(value); onDraftChange?.() }} />
     <label>Atividades consideradas<select name="atividade_escopo" defaultValue={search.get('atividade_escopo') ?? 'principal'}><option value="principal">Somente principal</option><option value="principal_ou_secundaria" disabled={!catalog.data?.secondary_available}>Principal ou secundárias</option></select></label>
     {!catalog.data?.secondary_available ? <p>Consulta de secundárias indisponível até confirmação da cobertura publicada.</p> : null}
     <label>Início de atividade: de<input type="date" name="inicio_atividade_de" defaultValue={search.get('inicio_atividade_de') ?? ''} /></label>

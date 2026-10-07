@@ -25,7 +25,7 @@ it('aplica múltiplos segmentos e os dois intervalos apenas ao enviar o formulá
   expect(next.get('segmentos')).toBe('academias,restaurantes')
   expect(next.get('catalog_version')).toBe('b2b-v1')
   expect(next.get('atividade_escopo')).toBe('principal')
-  expect(next.has('cnae')).toBe(false)
+  expect(next.has('cnae')).toBe(true)
   expect(next.get('inicio_atividade_ate')).toBe('2026-01-31')
   expect(next.get('situacao_evento_ate')).toBe('2026-02-28')
   expect(next.has('situacao_cadastral')).toBe(false)

@@ -193,6 +193,6 @@ describe('consulta assistida CNAE', () => {
     expect(screen.getByRole('option', { name: 'Principal ou secundárias' })).toBeDisabled()
     await user.click(screen.getByRole('button', { name: 'Aplicar filtros' }))
     const next = applied.mock.calls[0][0] as URLSearchParams
-    expect(Object.fromEntries(next)).toEqual({ cnaes: '0099999,0099999,0010100', atividade_escopo: 'principal' })
+    expect(Object.fromEntries(next)).toEqual({ cnae: '9999999', cnaes: '0099999,0099999,0010100', atividade_escopo: 'principal' })
   })
 })

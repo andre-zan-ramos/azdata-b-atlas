@@ -1,7 +1,7 @@
 # Contrato de revisão dos filtros CNPJ
 
-Data: 07/10/2026. Status: proposta para implementação por etapas.
-Entrega atual: análise de arquivos e documentação; implementação ainda não iniciada.
+Data: 07/10/2026. Status: Etapa 1 implementada; etapas 2 a 5 pendentes.
+Entrega atual: preparação e consultas completas em Empresas e Sócios no modo Mapa.
 
 ## 1. Objetivo e escopo
 
@@ -26,7 +26,7 @@ opcionais e de aplicação territorial imediata. Complementa os contratos
 `contrato-modos-busca-mapa.md`, `cnpj-filtros-b2b.md` e `cnae-ibge-frontend.md`.
 Não é uma Fase 7 nem declara concluído o aceite operacional da Fase 6.
 
-## 2. Diagnóstico confirmado em arquivos
+## 2. Diagnóstico confirmado em arquivos antes da Etapa 1
 
 | Evidência | Consequência |
 | --- | --- |
@@ -193,7 +193,54 @@ Os executores antigos devem ser revisados contra esta política antes de uso.
 Definir orçamento de chamadas, limites do servidor e critério de latência antes
 da execução. Filtro mínimo não garante consulta rápida nem cancelamento SQL.
 
-Nesta entrega foram lidos arquivos B-Atlas e API e as evidências enviadas pelo
+Na análise inicial foram lidos arquivos B-Atlas e API e as evidências enviadas pelo
 usuário. Não foram executados HTTP, banco, serviços, testes operacionais ou Git.
-O contrato é o artefato de revisão; etapas, aplicação e desempenho permanecem
-pendentes de implementação e validação correspondente.
+O estado original era de revisão, sem implementação. A entrega da Etapa 1
+é registrada abaixo; desempenho operacional permanece pendente.
+
+
+## 9. Entrega da Etapa 1 - 07/10/2026
+
+Implementada exclusivamente a Etapa 1. Os controles atuais foram reutilizados;
+diálogos CNAE/temporal e Demais consultas permanecem nas etapas posteriores.
+
+- `src/utils/cnpj-map-preparation.ts` centraliza elegibilidade, rascunho
+  territorial e carregamento municipal independente. O domínio Receita é
+  percorrido por `uf`, `page` e `page_size=50`, sem mapa/resultados/facetas.
+  Códigos literais e `codigo_ibge` publicados são preservados. Cliques municipais
+  exigem correspondência IBGE única; sem referência, o seletor Receita funciona.
+- Campos existentes mantêm rascunho no formulário. Campos e cliques territoriais
+  não escrevem a URL. Aplicar valida o conjunto e reinicia a página; erros
+  conservam o rascunho. A paginação consulta o recorte da URL e conserva edições
+  pendentes. URLs completas restauram o recorte e o histórico; `return_to`
+  continua usando a URL aplicada.
+- Queries empresariais usam o predicado compartilhado, sem retry ou refetch
+  automático por foco/reconexão. Ações manuais de refetch também são
+  protegidas. Estado desabilitado mostra orientação, sem loading empresarial
+  ou vazio fictício. Limpar/Voltar ao Brasil cancela mapa/lista, remove o
+  recorte e oculta dados em cache; respostas atrasadas não reaparecem.
+- Compatibilidade de release, filtros, contexto B2B, identidades e lista sem
+  coordenadas permanece. Conflito entre `cnae` e atividade B2B pede correção,
+  sem remover silenciosamente o CNAE. A API continua validando existência de
+  CNAEs e certificação de secundárias; não se deduz capacidade pelo IBGE.
+
+Validação isolada: testes das duas áreas e do utilitário cobrem entradas
+incompletas/inválidas com contagem zero de chamadas empresariais, quatro tipos
+de recorte completo, domínio municipal paginado, histórico, retorno, paginação,
+compatibilidade, aborto dos sinais e conclusões tardias após limpeza.
+
+Limites: mocks provam o comportamento do cliente, sem comprovar latência,
+compatibilidade operacional API/PostgreSQL ou cancelamento SQL. Nenhuma busca
+operacional, banco, benchmark ou carga foi executada. A execução inicial da
+implementação terminou sem commit ou sync; o fechamento Git foi autorizado
+posteriormente.
+
+Checks locais: suíte completa com um worker, 277 testes em 26 arquivos aprovados;
+rodada final focada, 65 testes em quatro arquivos aprovados; build de produção
+(`tsc --noEmit` + Vite) e `git diff --check` aprovados. A rodada paralela inicial
+teve timeouts; a execução serial foi usada para separar esse ruído das falhas.
+
+Revisão de fechamento: corrigida a expectativa de ausência de loading nos
+testes das duas páginas para usar o texto real da interface. A suíte completa,
+os 57 testes das páginas, o build e a checagem staged foram aprovados. O prompt
+da próxima etapa está em `docs/prompt-etapa-2-filtros-cnpj.md`.
