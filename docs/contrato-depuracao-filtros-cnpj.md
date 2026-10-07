@@ -1,6 +1,6 @@
 # Contrato de revisão dos filtros CNPJ
 
-Data: 07/10/2026. Status: Etapa 1 implementada; etapas 2 a 5 pendentes.
+Data: 07/10/2026. Status: Etapas 1 e 2 implementadas; etapas 3 a 5 pendentes.
 Entrega atual: preparação e consultas completas em Empresas e Sócios no modo Mapa.
 
 ## 1. Objetivo e escopo
@@ -242,5 +242,11 @@ teve timeouts; a execução serial foi usada para separar esse ruído das falhas
 
 Revisão de fechamento: corrigida a expectativa de ausência de loading nos
 testes das duas páginas para usar o texto real da interface. A suíte completa,
-os 57 testes das páginas, o build e a checagem staged foram aprovados. O prompt
-da próxima etapa está em `docs/prompt-etapa-2-filtros-cnpj.md`.
+os 57 testes das páginas, o build e a checagem staged foram aprovados.
+
+## 10. Entrega da Etapa 2 e próxima etapa
+
+O seletor CNAE geral está registrado em [entrega-etapa-2-cnae-geral.md](entrega-etapa-2-cnae-geral.md).
+O prompt da próxima etapa é [Etapa 3 — Período](prompt-etapa-3-filtros-cnpj.md).
+Os prompts de implementação já concluída foram retirados; os contratos e
+registros de entrega permanecem como referência.

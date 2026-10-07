@@ -11,7 +11,7 @@ import { cnaeCatalog, cnaeNode, cnaePage } from '../test/cnae-fixtures'
 
 vi.mock('../api/ibge/cnae/client', () => ({ cnaeApi: { catalog: vi.fn(), nodes: vi.fn() } }))
 
-vi.mock('../api/receita-federal/cnpj/client', () => ({ cnpjApi: { municipalities: vi.fn(), segments: vi.fn(), partnerMap: vi.fn(), partnerMapResults: vi.fn(), partners: vi.fn(), company: vi.fn(), establishment: vi.fn(), partnerParticipation: vi.fn() } }))
+vi.mock('../api/receita-federal/cnpj/client', () => ({ cnpjApi: { municipalities: vi.fn(), cnaes: vi.fn().mockResolvedValue({results:[],next:null,previous:null}), segments: vi.fn(), partnerMap: vi.fn(), partnerMapResults: vi.fn(), partners: vi.fn(), company: vi.fn(), establishment: vi.fn(), partnerParticipation: vi.fn() } }))
 vi.mock('../api/ibge/territories', () => ({ listStates: vi.fn().mockResolvedValue([{ id: 31, sigla: 'MG', nome: 'Minas Gerais' }]) }))
 vi.mock('../components/partner-territory-map', () => ({ PartnerTerritoryMap: ({ points, onState, onMunicipality }: { points: PartnerMapItem[]; onState: (code: string) => void; onMunicipality: (code: string) => void }) => <div><span data-testid="points">{points.length} pontos</span><button onClick={() => onState('31')}>Selecionar MG no mapa</button><button onClick={() => onMunicipality('3106200')}>Selecionar município no mapa</button></div> }))
 
@@ -40,9 +40,11 @@ describe('Fase 5 — mapa de participações por estabelecimento', () => {
     vi.mocked(cnaeApi.nodes).mockResolvedValue(cnaePage([cnaeNode]))
     renderPage('/receita-federal/cnpj/socios?modo=mapa&inicio_atividade_de=2025-01-01&uf=MG&page=3')
     await screen.findAllByText('MARIA SILVA')
+    await user.click(screen.getByRole('button', { name: 'Selecionar CNAEs' }))
     await user.click(screen.getByRole('button', { name: 'Consultar catálogo oficial CNAE' }))
     await user.click(await screen.findByRole('button', { name: 'Consultar nós CNAE' }))
     await user.click(await screen.findByRole('button', { name: 'Selecionar 0010100' }))
+    await user.click(screen.getByRole('button', { name: 'Confirmar' }))
     expect(cnpjApi.partnerMap).toHaveBeenCalledTimes(1); expect(cnpjApi.partnerMapResults).toHaveBeenCalledTimes(1)
     expect(screen.getByTestId('url')).toHaveTextContent('modo=mapa&inicio_atividade_de=2025-01-01&uf=MG&page=3')
     await user.click(screen.getByRole('button', { name: 'Aplicar filtros' }))
@@ -50,7 +52,7 @@ describe('Fase 5 — mapa de participações por estabelecimento', () => {
     expect(cnpjApi.partnerMapResults).toHaveBeenLastCalledWith({ inicio_atividade_de: '2025-01-01', uf: 'MG', cnaes: '0010100', atividade_escopo: 'principal', page: 1, page_size: 10 }, expect.any(AbortSignal))
     expect(screen.getAllByRole('link', { name: 'Abrir participação do sócio' })[0].getAttribute('href')).toContain('cnaes%3D0010100')
     await user.click(screen.getByRole('button', { name: 'Histórico anterior' }))
-    await waitFor(() => expect(screen.getByLabelText(/CNAEs adicionais/)).toHaveValue(''))
+    await waitFor(() => expect(document.querySelector('input[name="cnaes"]')).toHaveValue(''))
     expect(screen.getByTestId('url')).toHaveTextContent('modo=mapa&inicio_atividade_de=2025-01-01&uf=MG&page=3')
   })
   it('aplica os dois intervalos do estabelecimento com o mesmo recorte B2B', async () => {
@@ -66,6 +68,22 @@ describe('Fase 5 — mapa de participações por estabelecimento', () => {
     expect(await screen.findByText(/A URL contém parâmetros repetidos/)).toBeInTheDocument()
     expect(cnpjApi.partnerMap).not.toHaveBeenCalled()
     expect(cnpjApi.partnerMapResults).not.toHaveBeenCalled()
+  })
+  it('normalizes isolated legacy activity explicitly and preserves return context', async () => {
+    const user = userEvent.setup()
+    renderPage('/receita-federal/cnpj/socios?modo=mapa&uf=MG&cnae=0010100&return_to=%2Fdestino&page=3')
+    expect(cnpjApi.partnerMap).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', {name:/Normalizar CNAE/}))
+    expect(cnpjApi.partnerMap).not.toHaveBeenCalled()
+    await user.click(screen.getByRole('button', {name:'Aplicar filtros'}))
+    await waitFor(() => expect(cnpjApi.partnerMap).toHaveBeenCalledWith(expect.objectContaining({uf:'MG',cnaes:'0010100',atividade_escopo:'principal'}),expect.any(AbortSignal)))
+    expect(screen.getByTestId('url').textContent).toContain('return_to=%2Fdestino')
+    expect(screen.getByTestId('url').textContent).not.toContain('&cnae=')
+  })
+  it('blocks uncertified secondary activity even on a complete URL', async () => {
+    renderPage('/receita-federal/cnpj/socios?modo=mapa&uf=MG&cnaes=0010100&atividade_escopo=principal_ou_secundaria')
+    await screen.findByText(/Secundarias sem certificacao/)
+    expect(cnpjApi.partnerMap).not.toHaveBeenCalled(); expect(cnpjApi.partnerMapResults).not.toHaveBeenCalled()
   })
   beforeEach(() => {
     vi.clearAllMocks()
@@ -95,9 +113,9 @@ describe('Fase 5 — mapa de participações por estabelecimento', () => {
     await screen.findByText('Página 1')
     expect(cnpjApi.partnerMap).toHaveBeenCalledTimes(1)
     expect(cnpjApi.partnerMapResults).toHaveBeenCalledTimes(1)
-    await user.type(screen.getByLabelText(/CNAEs adicionais/), '9313100')
+    await chooseCode(user, '9313100')
     await user.click(screen.getByRole('button', { name: 'Próxima' }))
-    expect(screen.getByLabelText(/CNAEs adicionais/)).toHaveValue('9313100')
+    expect(document.querySelector('input[name="cnaes"]')).toHaveValue('9313100')
     expect(screen.getByText('Alterações ainda não aplicadas.')).toBeInTheDocument()
     await waitFor(() => expect(cnpjApi.partnerMapResults).toHaveBeenLastCalledWith({ uf: 'MG', inicio_atividade_de: '2025-01-01', page: 2, page_size: 10 }, expect.any(AbortSignal)))
     expect(cnpjApi.partnerMap).toHaveBeenCalledTimes(1)
@@ -146,18 +164,18 @@ describe('Fase 5 — mapa de participações por estabelecimento', () => {
     renderPage('/receita-federal/cnpj/socios?modo=mapa')
     await user.click(await screen.findByRole('button', { name: 'Selecionar MG no mapa' }))
     await screen.findByRole('option', { name: 'Belo Horizonte' }); await user.selectOptions(screen.getByLabelText('Município'), '4123')
-    await user.type(screen.getByLabelText(/CNAEs adicionais/), '5611201')
+    await chooseCode(user, '5611201')
     expect(cnpjApi.partnerMap).not.toHaveBeenCalled(); expect(cnpjApi.partnerMapResults).not.toHaveBeenCalled()
     expect(screen.getByText('Alterações ainda não aplicadas.')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Aplicar filtros' }))
     await waitFor(() => expect(cnpjApi.partnerMap).toHaveBeenCalledWith(expect.objectContaining({ uf: 'MG', municipio: '4123', cnaes: '5611201' }), expect.any(AbortSignal)))
     await user.click(screen.getByRole('button', { name: 'Limpar filtros' }))
     expect(screen.getByLabelText('UF')).toHaveValue('')
-    expect(screen.getByLabelText(/CNAEs adicionais/)).toHaveValue('')
+    expect(document.querySelector('input[name="cnaes"]')).toHaveValue('')
     expect(screen.queryByText('Carregando resultados…')).not.toBeInTheDocument()
   })
 
-  it.each(['&cnae=0010100', '&inicio_atividade_ate=2025-01-01', '&cnaes=5611201&atividade_escopo=principal&situacao_evento_de=2025-01-01', '&municipio=4123&cnae=0010100'])('restores complete URL and shares map/list cut %s', async suffix => {
+  it.each(['&cnaes=0010100&atividade_escopo=principal', '&inicio_atividade_ate=2025-01-01', '&cnaes=5611201&atividade_escopo=principal&situacao_evento_de=2025-01-01', '&municipio=4123&cnaes=0010100&atividade_escopo=principal'])('restores complete URL and shares map/list cut %s', async suffix => {
     renderPage('/receita-federal/cnpj/socios?modo=mapa&uf=MG' + suffix)
     await waitFor(() => expect(vi.mocked(cnpjApi.partnerMap)).toHaveBeenCalledTimes(1))
     await waitFor(() => expect(vi.mocked(cnpjApi.partnerMapResults)).toHaveBeenCalledTimes(1))
@@ -171,7 +189,7 @@ describe('Fase 5 — mapa de participações por estabelecimento', () => {
     let finishMap!: () => Promise<void>, finishList!: () => Promise<void>
     vi.mocked(cnpjApi.partnerMap).mockImplementation((...args) => new Promise(resolve => { finishMap = async () => { resolve(await originalMap(...args)) } }))
     vi.mocked(cnpjApi.partnerMapResults).mockImplementation((...args) => new Promise(resolve => { finishList = async () => { resolve(await originalList(...args)) } }))
-    renderPage('/receita-federal/cnpj/socios?modo=mapa&uf=MG&cnae=0010100')
+    renderPage('/receita-federal/cnpj/socios?modo=mapa&uf=MG&cnaes=0010100&atividade_escopo=principal')
     await waitFor(() => expect(vi.mocked(cnpjApi.partnerMapResults)).toHaveBeenCalledTimes(1))
     const mapSignal = vi.mocked(cnpjApi.partnerMap).mock.calls[0][1]!, listSignal = vi.mocked(cnpjApi.partnerMapResults).mock.calls[0][1]!
     await user.click(screen.getByRole('button', { name: 'Limpar filtros' }))
@@ -184,9 +202,16 @@ describe('Fase 5 — mapa de participações por estabelecimento', () => {
   it('clears unsaved form even when URL already has no applied cut', async () => {
     const user = userEvent.setup()
     renderPage('/receita-federal/cnpj/socios?modo=mapa')
-    await user.type(screen.getByLabelText(/CNAEs adicionais/), '5611201')
+    await chooseCode(user, '5611201')
     await user.click(screen.getByRole('button', { name: 'Limpar filtros' }))
-    expect(screen.getByLabelText(/CNAEs adicionais/)).toHaveValue('')
+    expect(document.querySelector('input[name="cnaes"]')).toHaveValue('')
   })
 
 })
+
+async function chooseCode(user: ReturnType<typeof userEvent.setup>, code: string) {
+ await user.click(screen.getByRole('button', {name:'Selecionar CNAEs'}));
+ await user.type(screen.getByLabelText(/exato \(sete/),code);
+ await user.click(screen.getByRole('button',{name:'Adicionar c\u00f3digo exato'}));
+ await user.click(screen.getByRole('button',{name:'Confirmar'}));
+}

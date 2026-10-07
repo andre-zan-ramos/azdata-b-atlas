@@ -8,6 +8,7 @@ export function mapEligibility(search: URLSearchParams, municipalities: Municipa
   for (const key of new Set(search.keys())) {
     if (search.getAll(key).length !== 1) return 'A URL contém parâmetros repetidos. Revise e aplique os filtros para consultar.'
   }
+  if (search.has('cnae') || search.has('segmentos')) return 'Revise explicitamente a atividade da URL antiga antes de aplicar.'
   if (!UFS.has(search.get('uf') ?? '')) return 'Selecione uma UF válida e CNAE e/ou período para aplicar filtros.'
   const get = (key: string) => search.get(key) ?? ''
   for (const [key, value] of search) {

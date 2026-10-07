@@ -1,5 +1,30 @@
 # Validação curta em navegador real
 
+## Revisão dos filtros — 07/10/2026
+
+`e2e/cnae-general.pw.ts` acrescenta quatro cenários: seletor Receita nas duas
+áreas CNPJ, em 375 e 1440 px. Cobrem busca por descrição no servidor, paginação,
+seleção múltipla, reabertura, rascunho/aplicado, limpeza descartada por Escape,
+Tab/Shift+Tab, retorno de foco, largura e paridade mapa/lista. Zero requisições
+empresariais antes de Aplicar; sem filtros implícitos.
+
+Na revisão para commit da Etapa 2, os cenários históricos CNPJ de `smoke.pw.ts`
+e `acceptance.pw.ts` foram atualizados para exigir recorte completo e aplicação
+explícita. O cenário IBGE abre agora o diálogo Receita e conserva a seleção
+durante 409/reinício. Fixtures incluem os domínios Receita CNAE/municípios.
+Obras conserva a interação existente. A suíte completa de 22 cenários passou
+em 2,2 minutos na rodada final desta revisão, sem testes ignorados ou retries.
+Somente o cenário IBGE mais longo possui prazo local de 60 s; um worker,
+zero retries e orçamento de 30 chamadas interceptadas permanecem.
+
+Os relatórios em `playwright-report/` e `test-results/` são artefatos transitórios
+da última execução. Contagens e evidências de 06/10 abaixo são históricas;
+não representam o conteúdo atual desses diretórios. O arquivo de evidência
+local `var/map-contract-measurements/20261006_browser/` foi preservado.
+
+Contrato atual: [revisão de filtros CNPJ](contrato-depuracao-filtros-cnpj.md).
+Fixtures de navegador não certificam API/PostgreSQL operacional.
+
 ## Complemento de fechamento — 06/10/2026
 
 `e2e/acceptance.pw.ts`: **6 testes novos aprovados em 28,8 s**, Chromium real,

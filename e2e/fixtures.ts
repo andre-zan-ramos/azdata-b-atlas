@@ -93,6 +93,8 @@ export const test = base.extend<{ evidence: BrowserEvidence }>({
         ? { ...coverage, results_total: 0, points_total: 0, without_coordinates_total: 0, returned_points: 0 }
         : evidence.mapState === 'truncated' ? { ...coverage, limit: 1, truncated: true, points_total: 2, without_coordinates_total: 0 } : coverage
       switch (url.pathname) {
+        case `${prefix}cnpj/dominios/municipios/`: return json(fastPage([municipality]))
+        case `${prefix}cnpj/dominios/cnaes/`: return json(fastPage([{ codigo: '0010100', descricao: 'Literal Receita' }]))
         case `${prefix}cnpj/estabelecimentos/00123456000100/`: return json({ ...establishment, empresa: partner.company, cnpj_ordem: '0001', cnpj_dv: '00', cnaes_secundarios: [], socios: [], geolocation: geo })
         case `${prefix}cnpj/socios/participacoes/7/`: return json({ release, participation: { ...partner.participation, ...partner.partner, empresa: partner.company } })
         case `${prefix}cnpj/segmentos/`: return json({ catalog_version: 'test-v1', classification_version: 'CNAE-Subclasses 2.3', reviewed_at: '2026-10-06', source: 'fixture', secondary_available: false, segments: [] })

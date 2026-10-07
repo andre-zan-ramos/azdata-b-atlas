@@ -32,6 +32,10 @@ for (const width of [1440, 375]) {
       await page.getByRole('link', { name: 'Mapa', exact: true }).click()
       await page.getByRole('combobox', { name: 'UF', exact: true }).selectOption('MG')
       if (area.name === 'Obras') await page.getByRole('button', { name: 'Pesquisar', exact: true }).click()
+      else {
+        await page.getByLabel('Início de atividade: de', { exact: true }).fill('2025-01-01')
+        await page.getByRole('button', { name: 'Aplicar filtros', exact: true }).click()
+      }
       await expect(page.getByRole('button', { name: area.marker, exact: true })).toBeVisible()
       await openResults(page)
       const results = page.getByRole('region', { name: 'Resultados textuais' })
@@ -52,7 +56,7 @@ for (const width of [1440, 375]) {
 
 for (const area of areas) {
   test(`${area.name}: teclado real no marcador e seleção territorial`, async ({ page, evidence }) => {
-    await page.goto(`${area.path}?modo=mapa&uf=MG&page=1`)
+    await page.goto(`${area.path}?modo=mapa&uf=MG&page=1${area.name === 'Obras' ? '' : '&inicio_atividade_de=2025-01-01'}`)
     const marker = page.getByRole('button', { name: area.marker, exact: true })
     await expect(marker).toBeVisible()
     await marker.focus()
@@ -74,6 +78,10 @@ for (const area of areas) {
     await expect(municipality).toBeVisible()
     await municipality.focus()
     await page.keyboard.press('Enter')
+    if (area.name !== 'Obras') {
+      expect(new URL(page.url()).searchParams.has('municipio')).toBe(false)
+      await page.getByRole('button', { name: 'Aplicar filtros', exact: true }).click()
+    }
     await expect.poll(() => new URL(page.url()).searchParams.get(area.name === 'Obras' ? 'codigo_municipio' : 'municipio')).toBe('4123')
     await expect(page.getByRole('heading', { name: 'Belo Horizonte', exact: true })).toBeVisible()
     expect(evidence.requests.every(request => request.method === 'GET')).toBe(true)
@@ -104,7 +112,7 @@ test('Obras: detalhe, retorno, histórico e recarga preservam o recorte; nenhum 
 })
 
 test('Sócios: pagina somente a lista e preserva estado separado de Busca/Mapa', async ({ page, evidence }) => {
-  await page.goto('/receita-federal/cnpj/socios?modo=mapa&uf=MG&page=1')
+  await page.goto('/receita-federal/cnpj/socios?modo=mapa&uf=MG&inicio_atividade_de=2025-01-01&page=1')
   await expect(page.getByRole('button', { name: areas[1].marker, exact: true })).toBeVisible()
   const mapCalls = () => evidence.requests.filter(request => request.path.endsWith('/socios/mapa/')).length
   expect(mapCalls()).toBe(1)
@@ -125,7 +133,7 @@ test('Sócios: pagina somente a lista e preserva estado separado de Busca/Mapa',
 
 test('Sócios: falha do mapa mantém resultados textuais sem repetir a consulta', async ({ page, evidence }) => {
   evidence.failPartnerMap = true
-  await page.goto('/receita-federal/cnpj/socios?modo=mapa&uf=MG&page=1')
+  await page.goto('/receita-federal/cnpj/socios?modo=mapa&uf=MG&inicio_atividade_de=2025-01-01&page=1')
   await expect(page.getByText('Mapa indisponível no teste.', { exact: true })).toBeVisible()
   await expect(page.getByRole('region', { name: 'Resultados textuais' }).locator('tbody tr')).toHaveCount(2)
   await expect(page.getByRole('button', { name: areas[1].marker, exact: true })).toHaveCount(0)

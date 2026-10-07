@@ -97,7 +97,7 @@ function CatalogSession({ select }: { select: (node: NodeReference) => void }) {
   </section>
 }
 
-export function CnaeCatalogPicker({ codes, onCodes }: { codes: string; onCodes: (codes: string) => void }) {
+export function CnaeCatalogPicker({ codes, onCodes }: { codes: string; onCodes: (codes: string, node?: NodeReference) => void | boolean }) {
   const [open, setOpen] = useState(false)
   const [notice, setNotice] = useState('')
   const panelId = useId()
@@ -105,7 +105,10 @@ export function CnaeCatalogPicker({ codes, onCodes }: { codes: string; onCodes: 
   const select = (node: NodeReference) => {
     if (node.level !== 'subclasse') return
     // Leave manual tokens (including duplicates and invalid literals) intact for API validation.
-    onCodes(codes === '' ? node.code : `${codes},${node.code}`)
+    if (onCodes(codes === '' ? node.code : `${codes},${node.code}`, node) === false) {
+      setNotice('Código não adicionado. Revise a seleção e o limite de CNAEs.')
+      return
+    }
     setNotice(`Código ${node.code} adicionado. Aplique os filtros para consultar o CNPJ.`)
   }
   return <div onKeyDown={event => { if (event.key === 'Escape' && open) { event.preventDefault(); setOpen(false); toggle.current?.focus() } }}>

@@ -196,7 +196,9 @@ validada da configuração local do B-Atlas. Execute **Run Python File** sem arg
 A origem pode vir de `VITE_AZDATA_API_BASE_URL` do ambiente ou `.env.local/.env`.
 Progresso e resultados ficam em `var/map-contract-measurements/<timestamp>/`
 como `events.jsonl` e `summary.json`, em UTF-8; esse diretório é ignorado pelo Git.
-O prompt da thread de análise está em `docs/prompt-monitoramento-medicao-fase-6.md`.
+Esse plano municipal amplo é histórico. A política vigente de CNPJ exige
+localidade + CNAE e/ou período; não executar o exemplo abaixo sem revisão.
+O planejamento operacional posterior está em [fase-6-plano-operacional.md](fase-6-plano-operacional.md).
 
 Exemplo para execução pelo usuário, substituindo origem e códigos oficiais:
 

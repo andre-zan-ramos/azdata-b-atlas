@@ -1,6 +1,6 @@
 import { canonicalFilters } from '../utils/cnpj-map-context'
 import { mapEligibility, useMapDraft, useMunicipalities } from '../utils/cnpj-map-preparation'
-import { B2B_FILTER_KEYS, CnpjB2BFilters, applyB2BForm } from '../components/cnpj-b2b-filters'
+import { B2B_FILTER_KEYS, CnpjB2BFilters, applyB2BForm, useActivityCapability } from '../components/cnpj-b2b-filters'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { FormEvent, lazy, Suspense, useMemo, useState, useEffect } from 'react'
 import { useLocation, useSearchParams } from 'react-router'
@@ -15,7 +15,7 @@ import { compatiblePartnerMap } from '../utils/partner-map'
 
 const TerritoryMap = lazy(() => import('../components/partner-territory-map').then(module => ({ default: module.PartnerTerritoryMap })))
 export const PARTNER_MAP_FILTER_KEYS = [...B2B_FILTER_KEYS, 'q', 'q_modo', 'uf', 'municipio', 'cnpj_basico', 'cnae', 'situacao_cadastral', 'matriz_filial', 'porte', 'natureza_juridica'] as const
-const EXTRA_FILTERS = [['cnpj_basico', 'CNPJ básico da empresa'], ['cnae', 'CNAE principal'], ['situacao_cadastral', 'Situação cadastral (código)'], ['matriz_filial', 'Matriz/filial (código)'], ['porte', 'Porte (código)'], ['natureza_juridica', 'Natureza jurídica (código)']] as const
+const EXTRA_FILTERS = [['cnpj_basico', 'CNPJ básico da empresa'], ['situacao_cadastral', 'Situação cadastral (código)'], ['matriz_filial', 'Matriz/filial (código)'], ['porte', 'Porte (código)'], ['natureza_juridica', 'Natureza jurídica (código)']] as const
 
 export function PartnerMapMode() {
   const [search, setSearch] = useSearchParams()
@@ -23,7 +23,9 @@ export function PartnerMapMode() {
   const { draft, dirty, markDirty, territory, resetDraft } = useMapDraft(search)
   const municipalities = useMunicipalities(draft.get('uf') ?? '')
   const appliedMunicipalities = useMunicipalities(search.get('uf') ?? '')
-  const eligibilityError = mapEligibility(search, appliedMunicipalities.data, appliedMunicipalities.isSuccess, true)
+  const capability = useActivityCapability()
+  const secondaryError = search.get("atividade_escopo") === "principal_ou_secundaria" && capability.data !== true ? "Secundarias sem certificacao publicada para a release." : null
+  const eligibilityError = secondaryError ?? mapEligibility(search, appliedMunicipalities.data, appliedMunicipalities.isSuccess, true)
   const blocked = Boolean(eligibilityError)
   const [formReset, setFormReset] = useState(0)
   const [validationError, setValidationError] = useState<string | null>(null)
@@ -69,7 +71,7 @@ export function PartnerMapMode() {
     applyB2BForm(data, next)
     if (!next.has('q')) next.delete('q_modo')
     next.set('page', '1')
-    const error = mapEligibility(next, municipalities.data, municipalities.isSuccess, true)
+    const error = next.get("atividade_escopo") === "principal_ou_secundaria" && capability.data !== true ? "Secundarias sem certificacao publicada para a release." : mapEligibility(next, municipalities.data, municipalities.isSuccess, true)
     setValidationError(error)
     if (!error) { resetDraft(next); setSearch(next) }
   }

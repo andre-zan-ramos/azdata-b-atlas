@@ -60,4 +60,4 @@ operações no banco compartilhado, commit ou push. Recortes nacionais podem
 exigir tempo elevado para contagem/varredura, conforme o contrato da API.
 Fase 6 permanece fora de escopo.
 
-Prompt da próxima thread: `docs/prompt-fase-6-busca-mapa.md`.
+Entrega posterior: [Fase 6 — harmonização e validação](fase-6-harmonizacao-validacao.md).

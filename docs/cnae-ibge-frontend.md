@@ -1,5 +1,10 @@
 # CNAE/CONCLA no fluxo de atividade — Fase 6
 
+Atualização de 07/10/2026: [Etapa 2 — CNAE geral](entrega-etapa-2-cnae-geral.md)
+substitui o campo manual pelo diálogo Receita. A consulta IBGE descrita abaixo
+foi preservada dentro desse diálogo; seleção altera sua edição interna e só
+Confirmar transfere ao rascunho externo. A descrição abaixo registra a entrega anterior.
+
 06/10/2026. Base B-Atlas `a969cf0`, API `5952cef`, OpenAPI CNAE `1.0.0`.
 Os dois checkouts estavam limpos; as entregas anteriores foram reutilizadas.
 Implementação somente no B-Atlas. Revisão, commit e sincronização autorizados

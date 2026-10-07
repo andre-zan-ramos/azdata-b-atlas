@@ -13,10 +13,11 @@ import { CnaeCatalogPicker } from './cnae-catalog-picker'
 import { CnpjB2BFilters, applyB2BForm } from './cnpj-b2b-filters'
 
 vi.mock('../api/ibge/cnae/client', () => ({ cnaeApi: { catalog: vi.fn(), nodes: vi.fn(), node: vi.fn(), relationships: vi.fn(), correspondences: vi.fn(), follow: vi.fn() } }))
-vi.mock('../api/receita-federal/cnpj/client', () => ({ cnpjApi: { segments: vi.fn() } }))
+vi.mock('../api/receita-federal/cnpj/client', () => ({ cnpjApi: { cnaes: vi.fn().mockResolvedValue({results:[],next:null,previous:null}), segments: vi.fn() } }))
 const api = vi.mocked(cnaeApi)
 beforeEach(() => {
   vi.resetAllMocks()
+  vi.mocked(cnpjApi.cnaes).mockResolvedValue({ count: 0, results: [], next: null, previous: null })
   api.catalog.mockResolvedValue(cnaeCatalog); api.nodes.mockResolvedValue(cnaePage([cnaeNode])); api.node.mockResolvedValue(cnaeDetail)
   api.follow.mockResolvedValue(cnaePage([])); api.correspondences.mockResolvedValue(cnaePage([]))
   vi.mocked(cnpjApi.segments).mockResolvedValue({ catalog_version: 'b2b-v1', classification_version: 'CNAE-Subclasses 2.3', reviewed_at: '2026-10-05', source: 'official', secondary_available: false, segments: [] })
@@ -184,6 +185,7 @@ describe('consulta assistida CNAE', () => {
     render(<QueryClientProvider client={client}><form onSubmit={event => {
       event.preventDefault(); const next = new URLSearchParams('cnae=9999999'); applyB2BForm(new FormData(event.currentTarget), next); applied(next)
     }}><CnpjB2BFilters search={new URLSearchParams('cnaes=0099999,0099999')} /><button>Aplicar filtros</button></form></QueryClientProvider>)
+    await user.click(screen.getByRole('button', { name: 'Selecionar CNAEs' }))
     await user.click(screen.getByRole('button', { name: 'Consultar catálogo oficial CNAE' }))
     await user.type(await screen.findByLabelText('Código ou descrição oficial'), 'Atividade{Enter}')
     await screen.findByRole('button', { name: 'Selecionar 0010100' })
@@ -191,8 +193,9 @@ describe('consulta assistida CNAE', () => {
     await user.click(await screen.findByRole('button', { name: 'Selecionar 0010100' }))
     expect(applied).not.toHaveBeenCalled()
     expect(screen.getByRole('option', { name: 'Principal ou secundárias' })).toBeDisabled()
+    await user.click(screen.getByRole('button', { name: 'Confirmar' }))
     await user.click(screen.getByRole('button', { name: 'Aplicar filtros' }))
     const next = applied.mock.calls[0][0] as URLSearchParams
-    expect(Object.fromEntries(next)).toEqual({ cnae: '9999999', cnaes: '0099999,0099999,0010100', atividade_escopo: 'principal' })
+    expect(Object.fromEntries(next)).toEqual({ cnaes: '0099999,0099999,0010100', atividade_escopo: 'principal' })
   })
 })
