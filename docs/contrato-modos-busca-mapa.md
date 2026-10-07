@@ -4,6 +4,13 @@ Status: proposta consolidada para implementação faseada
 Escopo: B-Atlas, AzData API e contratos necessários de geolocalização
 Data: 2026-09-30
 
+Proposta de revisão CNPJ em 07/10/2026:
+[`contrato-depuracao-filtros-cnpj.md`](contrato-depuracao-filtros-cnpj.md).
+Para Empresas/Sócios em Mapa, propõe consulta mínima com localidade + CNAE
+e/ou período, aplicação explícita e diálogos em Demais consultas. A proposta
+substitui as decisões anteriores desse escopo quando implementada; não cria
+Fase 7 e não altera o aceite pendente da Fase 6.
+
 Retomada Fase 6 em 2026-10-06: `cnae-ibge-frontend.md` documenta a integração
 somente leitura do catálogo oficial CNAE/CONCLA nos filtros de atividade do
 modo Mapa de Empresas/Sócios. Seleção explícita de subclasses por código

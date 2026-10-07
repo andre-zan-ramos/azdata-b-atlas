@@ -1,5 +1,10 @@
 # Filtros cartográficos CNPJ B2B
 
+Proposta de revisão em 07/10/2026: [contrato-depuracao-filtros-cnpj.md](contrato-depuracao-filtros-cnpj.md)
+define localidade + CNAE e/ou período como mínimo, aplicação explícita,
+seletor CNAE geral e diálogos em Demais consultas. Ainda não implementada;
+as descrições abaixo registram o comportamento anterior.
+
 Evolução em 06/10/2026: `cnae-ibge-frontend.md` descreve consulta assistida ao
 catálogo oficial IBGE/CONCLA em Empresas e Sócios no modo Mapa. Seleciona somente
 subclasses literais no rascunho de `cnaes`, sem aplicar consultas pesadas até
