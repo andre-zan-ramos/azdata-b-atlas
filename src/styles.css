@@ -342,3 +342,18 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 .cnae-dialog li, .partner-map-filters li { overflow-wrap: anywhere; }
 .cnae-dialog .cnae-choice { display: flex; align-items: center; gap: 8px; }
 .cnae-dialog .cnae-choice input[type="checkbox"] { width: 20px; height: 20px; min-height: 20px; flex: 0 0 20px; }
+/* Etapa 4: shared CNPJ map panel; closed details keep successful form controls. */
+.partner-map-filters .cnpj-other-queries { display: block; min-width: 0; border: 1px solid var(--line); border-radius: 8px; padding: 10px; }
+.cnpj-other-queries summary { cursor: pointer; overflow-wrap: anywhere; }
+.cnpj-other-title { font-weight: 700; }
+.cnpj-applied-summary, .cnpj-draft-status { display: block; margin-top: 8px; font-size: 12px; line-height: 1.5; }
+.cnpj-draft-status { color: var(--muted); }
+.cnpj-other-fields, .cnpj-extra-fields { display: grid; gap: 10px; min-width: 0; }
+.cnpj-other-fields { margin-top: 12px; }
+.cnpj-other-fields fieldset { display: grid; gap: 10px; min-width: 0; margin: 0; padding: 10px; border: 1px solid var(--line); border-radius: 6px; }
+.partner-map-filters label { display: grid; gap: 4px; font-size: 13px; }
+.partner-map-filters input:not([type="hidden"]):not([type="checkbox"]), .partner-map-filters select { min-height: 36px; padding: 7px 8px; min-width: 0; }
+.partner-map-filters .cnae-choice { display: flex; }
+.partner-map-filters input[type="checkbox"] { width: 20px; height: 20px; min-height: 20px; flex: 0 0 20px; accent-color: #347b68; }
+.cnpj-other-fields ul { padding-left: 18px; margin: 0; }
+.cnpj-other-fields button { max-width: 100%; overflow-wrap: anywhere; white-space: normal; }

@@ -1,3 +1,4 @@
+import { CnpjOtherQueries } from '../components/cnpj-other-queries'
 import { canonicalFilters } from '../utils/cnpj-map-context'
 import { mapEligibility, useMapDraft, useMunicipalities } from '../utils/cnpj-map-preparation'
 import { B2B_FILTER_KEYS, CnpjB2BFilters, applyB2BForm, useActivityCapability } from '../components/cnpj-b2b-filters'
@@ -77,16 +78,16 @@ export function PartnerMapMode() {
   }
   const changePage = (value: number) => { if (blocked) return; const next = new URLSearchParams(search); next.set('page', String(value)); setSearch(next) }
   return <div className="cno-explorer">
-    {eligibilityError ? <p role="status">{eligibilityError}</p> : null}{validationError ? <p role="alert">{validationError}</p> : null}{dirty ? <p role="status">Alterações ainda não aplicadas.</p> : null}
+    {eligibilityError ? <p role="status">{eligibilityError}</p> : null}{validationError ? <p role="alert">{validationError}</p> : null}
     <aside className="filter-card partner-map-filters"><h1>Mapa de Sócios</h1><p>Explore participações por estabelecimento.</p>
       <label>UF<select aria-label="UF" value={draft.get('uf') ?? ''} onChange={event => applyTerritory(event.target.value)}><option value="">Brasil</option>{draft.get('uf') && states.isSuccess && !states.data.some(item => item.sigla === draft.get('uf')) ? <option value={draft.get('uf')!}>{draft.get('uf')} (UF inválida)</option> : null}{(states.data ?? []).map(state => <option key={state.id} value={state.sigla}>{state.sigla} · {state.nome}</option>)}</select></label>
       {municipalities.isError ? <QueryError error={municipalities.error} retry={() => void municipalities.refetch()} /> : null}{states.isError ? <QueryError error={states.error} retry={() => void states.refetch()} /> : null}
       <label>Município<select aria-label="Município" value={draft.get('municipio') ?? ''} disabled={!draft.get('uf') || municipalities.isFetching} onChange={event => applyTerritory(draft.get('uf') ?? '', event.target.value)}><option value="">Todos</option>{draft.get('municipio') && !territories.some(item => item.codigo === draft.get('municipio')) ? <option value={draft.get('municipio')!}>{draft.get('municipio')} (confirmar no domínio Receita)</option> : null}{territories.map(item => <option key={item.codigo} value={item.codigo}>{item.descricao}</option>)}</select></label>
       <form key={formReset + PARTNER_MAP_FILTER_KEYS.map(key => filters[key]).join('|')} onChange={markDirty} onSubmit={submitFilters}>
-        <CnpjB2BFilters search={search} onDraftChange={markDirty} />
+        <CnpjOtherQueries search={search} dirty={dirty} blocked={blocked}><CnpjB2BFilters search={search} onDraftChange={markDirty} />
         <label>Nome do sócio (opcional)<input name="q" defaultValue={filters.q ?? ''} /></label>
         <label>Correspondência<select name="q_modo" defaultValue={filters.q_modo ?? 'contendo'}><option value="contendo">Contendo</option><option value="inicio">Início</option><option value="fim">Fim</option><option value="exato">Exato</option></select></label>
-        <details><summary>Filtros da empresa e do estabelecimento</summary>{EXTRA_FILTERS.map(([key, label]) => <label key={key}>{label}<input name={key} defaultValue={filters[key] ?? ''} /></label>)}</details>
+        <div className="cnpj-extra-fields">{EXTRA_FILTERS.map(([key, label]) => <label key={key}>{label}<input name={key} defaultValue={filters[key] ?? ''} /></label>)}</div></CnpjOtherQueries>
         <button>Aplicar filtros</button><button type="button" onClick={clearFilters}>Limpar filtros</button>
       </form>
     </aside>

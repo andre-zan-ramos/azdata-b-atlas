@@ -1,6 +1,6 @@
 # Contrato de revisão dos filtros CNPJ
 
-Data: 07/10/2026. Status: Etapas 1 a 3 implementadas; etapas 4 e 5 pendentes.
+Data: 07/10/2026. Status: Etapas 1 a 4 implementadas; Etapa 5 pendente.
 Entrega atual: preparação e consultas completas em Empresas e Sócios no modo Mapa.
 
 ## 1. Objetivo e escopo
@@ -247,7 +247,7 @@ os 57 testes das páginas, o build e a checagem staged foram aprovados.
 ## 10. Entrega da Etapa 2 e próxima etapa
 
 O seletor CNAE geral está registrado em [entrega-etapa-2-cnae-geral.md](entrega-etapa-2-cnae-geral.md).
-O prompt da próxima etapa é [Etapa 4 — Demais consultas e harmonização](prompt-etapa-4-filtros-cnpj.md).
+O prompt da próxima etapa é [Etapa 5 — Validação final limitada](prompt-etapa-5-filtros-cnpj.md).
 Os prompts de implementação já concluída foram retirados; os contratos e
 registros de entrega permanecem como referência.
 
@@ -270,3 +270,37 @@ Etapa 4 não implementada; Etapa 5 e aceite operacional Fase 6 pendentes.
 
 O prompt concluído da Etapa 3 e seu relatório separado foram retirados no
 fechamento; este contrato conserva a entrega e o prompt seguinte orienta a Etapa 4.
+
+## 12. Entrega da Etapa 4 — Demais consultas, 07/10/2026
+
+Empresas e Sócios compartilham `CnpjOtherQueries`: seção recolhível com CNAEs,
+períodos e demais campos empresariais, conservando localidade e Aplicar filtros
+no painel. O resumo aplicado (códigos, descrições já disponíveis, escopo,
+períodos e demais valores) e o indicador de rascunho permanecem visíveis quando
+recolhida. Campos continuam montados e participam integralmente da submissão;
+reabrir conserva valores. CSS compacto limitado ao painel e checkboxes próprios.
+Nenhum endpoint/parâmetro novo; elegibilidade, diálogos e contratos anteriores
+preservados. Paginação continua usando o aplicado e conserva o rascunho.
+
+Validação com mocks/fixtures cobre recolhimento por teclado, zero chamadas
+empresariais durante preparação/edição, envio recolhido, resumo aplicado versus
+pendente e paginação nas duas áreas em 375/1440 px, além das regressões existentes
+de histórico, recarga, URLs inválidas/repetidas, secundárias, erros e respostas
+atrasadas após limpeza. Tráfego operacional bloqueado no navegador.
+Fixtures não comprovam desempenho API/PostgreSQL ou cancelamento SQL.
+Etapa 5 e aceite operacional Fase 6 permanecem pendentes. A implementa??o
+inicial terminou sem commit/sync; o fechamento Git foi autorizado depois.
+
+Checks finais: 302 testes unitários em 30 arquivos (um worker), suíte completa
+Chromium com 32 cenários e build de produção aprovados. A primeira rodada
+unitária teve timeouts por execução paralela; a rodada serial final passou.
+O navegador identificou duplicação do aviso pendente; corrigida antes da rodada
+completa aprovada. Checagem local de UTF-8/whitespace dos arquivos alterados aprovada.
+
+Revisão de fechamento: normalizados fins de linha para manter o diff limitado
+ao escopo e preparado o prompt da Etapa 5. Checks Git de whitespace aprovados.
+
+Fechamento: 29 testes de Sócios/componente compartilhado e 33 de Empresas
+aprovados. Um cenário de Empresas excedeu 5 s na rodada focada; a execução
+isolada com prazo de 15 s passou (o cenário terminou em 1,9 s), sem alterar
+o timeout padrão nem o código funcional.
