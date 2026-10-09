@@ -128,8 +128,8 @@ describe('Fase 5 — mapa de participações por estabelecimento', () => {
   })
 
 
-  it.each(['release', 'filters'] as const)('oculta pontos quando %s não é compatível com a lista', async kind => {
-    vi.mocked(cnpjApi.partnerMapResults).mockResolvedValue({ ...listData, ...(kind === 'release' ? { release: '2026-09' } : { filters: { uf: 'SP' } }) })
+  it.each(['release', 'filters', 'b2b_context'] as const)('oculta pontos quando %s não é compatível com a lista', async kind => {
+    vi.mocked(cnpjApi.partnerMapResults).mockResolvedValue({ ...listData, ...(kind === 'release' ? { release: '2026-09' } : kind === 'filters' ? { filters: { uf: 'SP' } } : { filters: { uf: 'MG', inicio_atividade_de: '2025-01-01' }, b2b_context: { catalog_version: null, segmentos: [], cnaes: ['0010100'], atividade_escopo: 'principal' } }) })
     renderPage()
     expect(await screen.findByRole('alert')).toHaveTextContent('publicações ou filtros incompatíveis')
     expect(await screen.findByTestId('points')).toHaveTextContent('0 pontos')

@@ -1,6 +1,6 @@
 # Contrato de revisão dos filtros CNPJ
 
-Data: 07/10/2026. Status: Etapas 1 a 4 implementadas; Etapa 5 pendente.
+Data: 07/10/2026. Status: Etapas 1 a 5 implementadas; aceite operacional pendente.
 Entrega atual: preparação e consultas completas em Empresas e Sócios no modo Mapa.
 
 ## 1. Objetivo e escopo
@@ -304,3 +304,94 @@ Fechamento: 29 testes de Sócios/componente compartilhado e 33 de Empresas
 aprovados. Um cenário de Empresas excedeu 5 s na rodada focada; a execução
 isolada com prazo de 15 s passou (o cenário terminou em 1,9 s), sem alterar
 o timeout padrão nem o código funcional.
+
+## 13. Entrega da Etapa 5 — Validação final limitada, 07/10/2026
+
+Preservadas as Etapas 1 a 4, sem novos filtros, endpoints ou mudanças funcionais.
+Reutilizadas as provas unitárias de elegibilidade compartilhada, rascunho/aplicado,
+URLs incompletas/inválidas/repetidas e antigas sem revisão, secundárias certificadas,
+IBGE separado, erros, compatibilidade release/filtros/contexto B2B, identidades,
+duplicatas, registros sem coordenadas e aborto/respostas tardias após limpeza.
+Busca textual, detalhes e Obras permanecem cobertos pelas regressões existentes.
+Acrescentadas quatro provas em Empresas (controle compatível e divergências de
+release, filtros e contexto B2B), que preservam a lista e ocultam pontos quando
+incompatíveis; estendida a prova de Sócios para divergência de contexto B2B.
+
+Chromium reutiliza os cenários de preparação/edição sem chamadas empresariais,
+diálogos isolados (Confirmar/Cancelar/Limpar, foco, Tab/Shift+Tab, Escape e Enter),
+Demais consultas recolhida, submissão integral, paginação com rascunho pendente,
+histórico, recarga e return_to, em 375/1440 px. `e2e/final-filters.pw.ts` acrescenta
+oito provas dos quatro recortes nas duas áreas: UF + CNAE, UF + período,
+UF + CNAE + período e UF/município + CNAE. Confere o conjunto completo de
+parâmetros em mapa/lista, códigos com zeros, múltiplos CNAEs, intervalos abertos
+e duas datas independentes, sem situação, território ou datas implícitos.
+Os eventos de foco/reconexão não ampliam chamadas. Fixtures verificam transporte
+conjunto dos CNAEs (OR) e filtros independentes (AND), sem provar execução SQL.
+Tráfego operacional bloqueado; um worker Chromium e zero retries.
+
+Checks finais: suíte unitária serial (`node node_modules/vitest/vitest.mjs run
+--maxWorkers=1`) com **307 testes em 30 arquivos aprovados**; suíte completa
+Chromium com **40 cenários aprovados**, em 5,3 minutos, incluindo 375/1440 px;
+build de produção e UTF-8/whitespace dos arquivos alterados aprovados.
+A primeira rodada unitária, simultânea ao navegador/build, teve dois timeouts
+de 5 s nos testes preexistentes dos diálogos CNAE e período. A repetição completa
+serial sem essa concorrência passou, sem modificar esses dois testes ou prazos.
+A primeira rodada Chromium também passou nos 40 cenários; a rodada final incluiu
+a espera das notificações de foco/reconexão antes de limpar a elegibilidade.
+
+### Plano manual operacional posterior — ainda não autorizado para execução
+
+Preparar primeiro uma ficha de ensaio com origem/release, recorte literal e
+URLs completas. Exemplo candidato: `uf=MG&municipio=4123&cnaes=5611201&atividade_escopo=principal`;
+confirmar município no domínio Receita e CNAE publicado antes do ensaio.
+Se houver período, registrar explicitamente cada limite ISO e seu campo;
+não acrescentar situação Ativa, secundárias ou datas por conveniência.
+Escolher recorte limitado e revisar seu custo: UF/CNAE e `limit` não limitam
+o universo contado. Não executar matriz de variantes para completar evidência.
+
+Definir explicitamente, antes de qualquer chamada: orçamento total de GETs
+(incluindo auxiliares), limite de pontos, página/tamanho da lista, teto de bytes,
+limites efetivos SQL/lock e prazo total nas conexões reais da API, prazo do cliente,
+procedimento de timeout/cancelamento e critério aprovado de latência.
+Esses valores estão pendentes para este ensaio; não herdar automaticamente
+os valores propostos em `fase-6-plano-operacional.md` nem tratá-los como SLO.
+Registrar quem confirmou, data/fuso e evidência do servidor. Sem essa ficha,
+não executar. Após autorização, mapa/lista de cada área usam exatamente o mesmo
+recorte, sequencialmente, sem retry/refetch, detalhes ou acumulação de páginas;
+falha encerra a rodada, e confirmar término no servidor antes de outra tentativa.
+
+Revisão somente por leitura dos executores existentes:
+
+- `measure_map_contracts.py` e `measure-map-contracts.ps1` enviam CNPJ somente
+  territorial, incompatível com esta política; seguem para outras áreas após
+  falha. PowerShell também não declara teto de bytes nem bloqueia redirects.
+- `measure_cnpj_b2b.py` usa segmentos/versão antigos, exige atividade municipal,
+  não contempla período isolado e não exige confirmação de limites reais.
+- `measure_phase6_acceptance.py` herda esse recorte antigo e inclui Obras;
+  exige declaração de limites, mas não os verifica. Não é o ensaio desta etapa.
+
+Nenhum executor foi alterado ou executado, inclusive em dry-run. Revisar/adaptar
+o executor ao recorte e orçamento aprovados em trabalho posterior antes do uso;
+as instruções anteriores de Run Python File não autorizam esta execução.
+
+Fornecer URLs/parâmetros, horário/fuso, HTTP ou `status=null`, bytes e latência
+por GET, respostas literais e logs do servidor que mostrem limites e término
+ou cancelamento das instruções. Conferir release/filtros/contexto B2B mapa/lista,
+identidade técnica (estabelecimento em Empresas; participação/estabelecimento
+em Sócios), zeros, documentos mascarados, duplicatas, null/vazios, cobertura,
+truncamento e permanência textual dos registros sem coordenadas. Erros não
+viram zero e desconhecidos continuam desconhecidos. Primeira página não prova
+universo completo; metadados iguais não provam snapshot entre GETs.
+
+Aceite funcional com fixtures é limitado ao cliente. Compatibilidade real,
+latência API/PostgreSQL e cancelamento SQL permanecem pendentes; esta entrega
+não encerra o aceite operacional da Fase 6. Sem HTTP operacional, banco,
+benchmark, cargas, commit ou sincronização.
+
+Fechamento de 09/10/2026: revisão, commit e sincronização autorizados após a
+entrega inicial. As cinco etapas encerram esta revisão de filtros; não há
+Etapa 6. Próxima pendência: [preparação do aceite operacional CNPJ da Fase 6](prompt-preparacao-aceite-operacional-cnpj.md),
+sem execução operacional nesta thread.
+Verificação de fechamento: 66 testes de Empresas/Sócios, oito cenários Chromium
+da Etapa 5 e checagens UTF-8/whitespace aprovados novamente. Suítes completas
+e build da entrega preservados; alterações adicionais somente documentais.

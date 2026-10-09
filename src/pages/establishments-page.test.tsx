@@ -27,6 +27,20 @@ function LocationProbe(){const location=useLocation();return <output data-testid
 function renderPage(entry='/receita-federal/cnpj?q=atlas&page=1'){return render(<Providers><MemoryRouter initialEntries={[entry]}><Routes><Route path="/receita-federal/cnpj" element={<><EstablishmentsPage/><LocationProbe/></>}/><Route path="*" element={<LocationProbe/>}/></Routes></MemoryRouter></Providers>)}
 
 describe('busca empresarial unificada',()=>{
+  it.each(['compatible', 'release', 'filters', 'b2b_context'] as const)('preserva lista e controla pontos por compatibilidade %s', async kind => {
+    const filters = { uf: 'MG', cnaes: '0010100,6201501', atividade_escopo: 'principal' as const }
+    const context = { catalog_version: null, segmentos: [], cnaes: ['0010100', '6201501'], atividade_escopo: 'principal' as const }
+    mapMock.mockResolvedValue({
+      release: '2026-08', identity: { record: 'establishment', key: 'cnpj' }, filters, b2b_context: context, territories: [],
+      coverage: { results_total: 2, points_total: 1, without_coordinates_total: 1, returned_points: 1, limit: 2000, maximum_limit: 5000, truncated: false, points_match_results: true },
+      points: [{ ...establishmentPage.results[0], release: '2026-08', geolocation: { status: 'available', reason: null, precision: 'postal_code_approximation', latitude: -19, longitude: -43, source: 'fixture', observed_at: null, stale: false } }],
+    })
+    establishmentsMock.mockResolvedValue({ ...establishmentPage, release: kind === 'release' ? 'different-release' : '2026-08', filters: kind === 'filters' ? { ...filters, uf: 'SP' } : filters, b2b_context: kind === 'b2b_context' ? { ...context, cnaes: ['6201501'] } : context })
+    renderPage('/receita-federal/cnpj?modo=mapa&uf=MG&cnaes=0010100,6201501&atividade_escopo=principal')
+    await screen.findByText('ATLAS')
+    await waitFor(() => expect(screen.getByTestId('establishment-map')).toHaveAttribute('data-points', kind === 'compatible' ? '1' : '0'))
+    expect(screen.getByText('ATLAS')).toBeInTheDocument()
+  })
   it('seleção oficial preserva URL até Aplicar, envia apenas códigos ao CNPJ e mantém erro Receita', async () => {
     const user = userEvent.setup()
     vi.mocked(cnaeApi.catalog).mockResolvedValue(cnaeCatalog)
