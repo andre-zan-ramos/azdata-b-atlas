@@ -1,5 +1,11 @@
 # Fase 6 — plano limitado de aceite operacional
 
+Atualização de 09/10/2026: para o ensaio CNPJ posterior à Etapa 5, consultar
+[ficha de preparação](aceite-operacional-cnpj-ficha.md). Este plano de seis GETs
+é histórico e não autoriza aquela rodada: inclui Obras, segmentos antigos e
+limites propostos que não foram aprovados para o novo ensaio. Não executar seu
+wrapper para substituir a ficha pendente.
+
 Preparado em 06/10/2026. Bases inspecionadas: B-Atlas `560221e65c581ac778c23ddad14531032557a632`,
 API `5952cefb43baf3665cde5e2c6aa48f1c0088e34b`. Execução exclusivamente pelo
 operador no VS Code. Nenhuma chamada operacional foi feita nesta revisão.
