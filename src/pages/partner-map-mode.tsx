@@ -2,7 +2,6 @@ import { SearchableCombobox } from '../components/searchable-combobox'
 import { Toast } from '../components/toast'
 import { MapHelp } from '../components/map-help'
 import { MapWorkspace } from '../components/map-workspace'
-import { CnpjOtherQueries } from '../components/cnpj-other-queries'
 import { canonicalFilters } from '../utils/cnpj-map-context'
 import { mapEligibility, useMapDraft, useMunicipalities, useMunicipalityMapSelection } from '../utils/cnpj-map-preparation'
 import { B2B_FILTER_KEYS, CnpjB2BFilters, applyB2BForm, useActivityCapability } from '../components/cnpj-b2b-filters'
@@ -86,10 +85,10 @@ export function PartnerMapMode() {
       {municipalities.isError ? <QueryError error={municipalities.error} retry={() => void municipalities.refetch()} /> : null}{states.isError ? <QueryError error={states.error} retry={() => void states.refetch()} /> : null}
       <SearchableCombobox label="Município" value={draft.get('municipio') ?? ''} disabled={!draft.get('uf')} loading={municipalities.isFetching} options={[{ value: '', label: 'Todos' }, ...territories.slice().sort((a, b) => a.descricao.localeCompare(b.descricao, 'pt-BR')).map(item => ({ value: item.codigo, label: item.descricao }))]} emptyMessage="Nenhum município disponível para esta UF." onChange={code => applyTerritory(draft.get('uf') ?? '', code)} />
       <form key={formReset + PARTNER_MAP_FILTER_KEYS.map(key => filters[key]).join('|')} onChange={markDirty} onSubmit={submitFilters}>
-        <CnpjOtherQueries search={search} dirty={dirty} blocked={blocked}><CnpjB2BFilters search={search} onDraftChange={markDirty} />
+        <CnpjB2BFilters search={search} onDraftChange={markDirty} dirty={dirty} blocked={blocked}>
         <label>Nome do sócio (opcional)<input name="q" defaultValue={filters.q ?? ''} /></label>
         <label>Correspondência<select name="q_modo" defaultValue={filters.q_modo ?? 'contendo'}><option value="contendo">Contendo</option><option value="inicio">Início</option><option value="fim">Fim</option><option value="exato">Exato</option></select></label>
-        <div className="cnpj-extra-fields">{EXTRA_FILTERS.map(([key, label]) => <label key={key}>{label}<input name={key} defaultValue={filters[key] ?? ''} /></label>)}</div></CnpjOtherQueries>
+        <div className="cnpj-extra-fields">{EXTRA_FILTERS.map(([key, label]) => <label key={key}>{label}<input name={key} defaultValue={filters[key] ?? ''} /></label>)}</div></CnpjB2BFilters>
         <button>Aplicar filtros</button><button type="button" onClick={clearFilters}>Limpar filtros</button>
       </form>
     </aside>

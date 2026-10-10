@@ -402,3 +402,25 @@ main:has(.map-workspace) > .app-footer { display: none; }
 .searchable-combobox-options > button { display: block; width: 100%; min-height: 36px; text-align: left; padding: 8px 10px; background: white; color: inherit; border: 0; border-radius: 0; }
 .searchable-combobox-options > button[data-active="true"], .searchable-combobox-options > button[aria-selected="true"] { background: #e6f0eb; }
 .searchable-combobox-options > p { margin: 10px; font-size: 13px; }
+
+.cnpj-primary-filters { display: grid; gap: 12px; min-width: 0; }
+.cnpj-primary-filters fieldset { display: grid; gap: 8px; min-width: 0; margin: 0; padding: 0; border: 0; }
+.cnpj-primary-filters legend { padding: 0; margin-bottom: 6px; font-size: 13px; font-weight: 600; }
+.cnpj-primary-filters p, .cnpj-primary-filters ul { margin: 0; }
+.cnpj-date-range { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.cnpj-date-range label, .cnpj-date-range input { min-width: 0; }
+.cnpj-primary-filters small { color: var(--muted); }
+.cnae-multiselect { display: grid; gap: 4px; min-width: 0; }
+.cnae-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 6px; border: 1px solid var(--line); border-radius: 6px; background: white; }
+.cnae-chips:focus-within { outline: 2px solid var(--brand); outline-offset: 2px; }
+.cnae-chips input { flex: 1; width: 100%; min-width: 100px; border: 0; outline: 0; box-shadow: none; }
+.cnae-chip { display: flex; align-items: center; gap: 5px; max-width: 100%; padding: 4px 6px; background: #eaf2ee; border-radius: 4px; font-size: 12px; }
+.cnae-chip span { overflow-wrap: anywhere; }
+.cnae-chip button { background: transparent; color: var(--brand); border: 0; padding: 0 4px; min-height: 24px; width: auto; }
+.cnae-combobox-positioner { z-index: 1500; width: var(--anchor-width); max-width: calc(100vw - 24px); }
+.cnae-combobox-popup { background: white; border: 1px solid var(--line); border-radius: 6px; box-shadow: 0 8px 24px #0002; padding: 4px; max-height: min(360px, var(--available-height)); overflow-y: auto; }
+.cnae-combobox-item { display: flex; gap: 8px; padding: 8px; cursor: pointer; font-size: 13px; border-radius: 4px; }
+.cnae-combobox-item[data-highlighted], .cnae-combobox-item[data-selected] { background: #eaf2ee; }
+.cnae-combobox-item small { display: block; color: var(--muted); }
+.cnae-combobox-pagination { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px; }
+.cnae-combobox-pagination button { padding: 5px 8px; }

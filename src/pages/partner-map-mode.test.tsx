@@ -6,10 +6,17 @@ import { cnpjApi } from '../api/receita-federal/cnpj/client'
 import type { PartnerMapItem, PartnerMapResponse, PartnerMapResults } from '../api/receita-federal/cnpj/types'
 import { Providers } from '../app/providers'
 import { PartnersPage } from './partners-page'
-import { cnaeApi } from '../api/ibge/cnae/client'
-import { cnaeCatalog, cnaeNode, cnaePage } from '../test/cnae-fixtures'
 
-vi.mock('../api/ibge/cnae/client', () => ({ cnaeApi: { catalog: vi.fn(), nodes: vi.fn() } }))
+// The real chips, popup and keyboard behavior are exercised in Chromium.
+vi.mock('../components/cnae-multiselect', async () => {
+  const { useState } = await import('react')
+  const { cnpjApi: api } = await import('../api/receita-federal/cnpj/client')
+  return { CnaeMultiselect: ({ items, onChange }: { items: { codigo: string; descricao: string }[]; onChange: (items: { codigo: string; descricao: string }[]) => void }) => {
+    const [options, setOptions] = useState<{ codigo: string; descricao: string }[]>([])
+    return <><input role="combobox" aria-label={'CNAEs espec\u00edficos'} onFocus={() => { void api.cnaes({ page: 1, page_size: 10 }).then(result => setOptions(result.results)) }} />{options.map(item => <button key={item.codigo} type="button" role="option" onClick={() => onChange([...items, item])}>{item.descricao}</button>)}</>
+  } }
+})
+
 
 vi.mock('../api/receita-federal/cnpj/client', () => ({ cnpjApi: { municipalities: vi.fn(), cnaes: vi.fn().mockResolvedValue({results:[],next:null,previous:null}), segments: vi.fn(), partnerMap: vi.fn(), partnerMapResults: vi.fn(), partners: vi.fn(), company: vi.fn(), establishment: vi.fn(), partnerParticipation: vi.fn() } }))
 vi.mock('../api/ibge/territories', () => ({ listStates: vi.fn().mockResolvedValue([{ id: 31, sigla: 'MG', nome: 'Minas Gerais' }]) }))
@@ -36,16 +43,12 @@ function renderPage(url = '/receita-federal/cnpj/socios?modo=mapa&uf=MG&inicio_a
 describe('Fase 5 — mapa de participações por estabelecimento', () => {
   it('aplica seleção CNAE literal aos pares somente após envio e restaura pelo histórico', async () => {
     const user = userEvent.setup()
-    vi.mocked(cnaeApi.catalog).mockResolvedValue(cnaeCatalog)
-    vi.mocked(cnaeApi.nodes).mockResolvedValue(cnaePage([cnaeNode]))
     renderPage('/receita-federal/cnpj/socios?modo=mapa&inicio_atividade_de=2025-01-01&uf=MG&page=3')
     await screen.findAllByText('MARIA SILVA')
     await user.click(screen.getByText('Demais consultas', { exact: true }))
-    await user.click(screen.getByRole('button', { name: 'Selecionar CNAEs' }))
-    await user.click(screen.getByRole('button', { name: 'Consultar catálogo oficial CNAE' }))
-    await user.click(await screen.findByRole('button', { name: 'Consultar nós CNAE' }))
-    await user.click(await screen.findByRole('button', { name: 'Selecionar 0010100' }))
-    await user.click(screen.getByRole('button', { name: 'Confirmar' }))
+    vi.mocked(cnpjApi.cnaes).mockResolvedValue({ results: [{ codigo: '0010100', descricao: 'Literal Receita' }], next: null, previous: null } as never)
+    await user.click(screen.getByRole('combobox', { name: 'CNAEs espec\u00edficos' }))
+    await user.click(await screen.findByRole('option', { name: /Literal Receita/ }))
     expect(cnpjApi.partnerMap).toHaveBeenCalledTimes(1); expect(cnpjApi.partnerMapResults).toHaveBeenCalledTimes(1)
     expect(screen.getByTestId('url')).toHaveTextContent('modo=mapa&inicio_atividade_de=2025-01-01&uf=MG&page=3')
     await user.click(screen.getByRole('button', { name: 'Aplicar filtros' }))
@@ -212,9 +215,8 @@ describe('Fase 5 — mapa de participações por estabelecimento', () => {
 })
 
 async function chooseCode(user: ReturnType<typeof userEvent.setup>, code: string) {
+ vi.mocked(cnpjApi.cnaes).mockResolvedValue({ results: [{ codigo: code, descricao: 'Atividade teste' }], next: null, previous: null } as never)
  await user.click(screen.getByText('Demais consultas', { exact: true }));
- await user.click(screen.getByRole('button', {name:'Selecionar CNAEs'}));
- await user.type(screen.getByLabelText(/exato \(sete/),code);
- await user.click(screen.getByRole('button',{name:'Adicionar c\u00f3digo exato'}));
- await user.click(screen.getByRole('button',{name:'Confirmar'}));
+ await user.click(screen.getByRole('combobox', {name:'CNAEs espec\u00edficos'}));
+ await user.click(await screen.findByRole('option', {name:/Atividade teste/}));
 }

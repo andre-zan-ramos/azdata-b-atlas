@@ -40,10 +40,7 @@ for (const width of [1440, 375]) {
       }
       if (area.name === 'Obras') await page.getByRole('button', { name: 'Pesquisar', exact: true }).click()
       else {
-        await page.getByRole('button', { name: 'Definir período', exact: true }).click()
-        const period = page.getByRole('dialog', { name: 'Definir período' })
-        await period.getByLabel('Início de atividade: de', { exact: true }).fill('2025-01-01')
-        await period.getByRole('button', { name: 'Confirmar', exact: true }).click()
+        await page.getByLabel('Início de atividade: de', { exact: true }).fill('2025-01-01')
         await page.getByRole('button', { name: 'Aplicar filtros', exact: true }).click()
       }
       await expect(page.getByRole('button', { name: area.marker, exact: true })).toBeVisible()

@@ -8,10 +8,17 @@ import { listStates } from '../api/ibge/territories'
 import type { BusinessSearchItem } from '../api/receita-federal/cnpj/types'
 import { Providers } from '../app/providers'
 import { EstablishmentsPage } from './establishments-page'
-import { cnaeApi } from '../api/ibge/cnae/client'
-import { cnaeCatalog, cnaeNode, cnaePage } from '../test/cnae-fixtures'
 
-vi.mock('../api/ibge/cnae/client', () => ({ cnaeApi: { catalog: vi.fn(), nodes: vi.fn() } }))
+// The real chips, popup and keyboard behavior are exercised in Chromium.
+vi.mock('../components/cnae-multiselect', async () => {
+  const { useState } = await import('react')
+  const { cnpjApi: api } = await import('../api/receita-federal/cnpj/client')
+  return { CnaeMultiselect: ({ items, onChange }: { items: { codigo: string; descricao: string }[]; onChange: (items: { codigo: string; descricao: string }[]) => void }) => {
+    const [options, setOptions] = useState<{ codigo: string; descricao: string }[]>([])
+    return <><input role="combobox" aria-label={'CNAEs espec\u00edficos'} onFocus={() => { void api.cnaes({ page: 1, page_size: 10 }).then(result => setOptions(result.results)) }} />{options.map(item => <button key={item.codigo} type="button" role="option" onClick={() => onChange([...items, item])}>{item.descricao}</button>)}</>
+  } }
+})
+
 
 vi.mock('../api/ibge/territories', () => ({ listStates: vi.fn().mockResolvedValue([{ id: 31, sigla: 'MG', nome: 'Minas Gerais' }]) }))
 vi.mock('../components/establishment-territory-map', () => ({ EstablishmentTerritoryMap: ({ points, onState, onMunicipality, uf }: { points: unknown[]; onState: (code: string) => void; onMunicipality: (code: string) => void; uf: string }) => <div data-testid="establishment-map" data-points={points.length}><button onClick={() => onState('31')}>Mapa MG</button>{uf ? <button onClick={() => onMunicipality('3106200')}>Mapa Belo Horizonte</button> : null}</div> }))
@@ -41,18 +48,14 @@ describe('busca empresarial unificada',()=>{
     await waitFor(() => expect(screen.getByTestId('establishment-map')).toHaveAttribute('data-points', kind === 'compatible' ? '1' : '0'))
     expect(screen.getByText('ATLAS')).toBeInTheDocument()
   })
-  it('seleção oficial preserva URL até Aplicar, envia apenas códigos ao CNPJ e mantém erro Receita', async () => {
+  it('seleção Receita preserva URL até Aplicar, envia apenas códigos ao CNPJ e mantém erro Receita', async () => {
     const user = userEvent.setup()
-    vi.mocked(cnaeApi.catalog).mockResolvedValue(cnaeCatalog)
-    vi.mocked(cnaeApi.nodes).mockResolvedValue(cnaePage([cnaeNode]))
     renderPage('/receita-federal/cnpj?modo=mapa&inicio_atividade_de=2025-01-01&uf=MG&page=3')
     await screen.findByText('ATLAS')
     await user.click(screen.getByText('Demais consultas', { exact: true }))
-    await user.click(screen.getByRole('button', { name: 'Selecionar CNAEs' }))
-    await user.click(screen.getByRole('button', { name: 'Consultar catálogo oficial CNAE' }))
-    await user.click(await screen.findByRole('button', { name: 'Consultar nós CNAE' }))
-    await user.click(await screen.findByRole('button', { name: 'Selecionar 0010100' }))
-    await user.click(screen.getByRole('button', { name: 'Confirmar' }))
+    vi.mocked(cnpjApi.cnaes).mockResolvedValue({ results: [{ codigo: '0010100', descricao: 'Literal Receita' }], next: null, previous: null } as never)
+    await user.click(screen.getByRole('combobox', { name: 'CNAEs espec\u00edficos' }))
+    await user.click(await screen.findByRole('option', { name: /Literal Receita/ }))
     expect(mapMock).toHaveBeenCalledTimes(1); expect(establishmentsMock).toHaveBeenCalledTimes(1)
     expect(screen.getByTestId('location')).toHaveTextContent('modo=mapa&inicio_atividade_de=2025-01-01&uf=MG&page=3')
     establishmentsMock.mockRejectedValue(new ApiError('Códigos indisponíveis no domínio publicado: 0010100', 400, undefined, { cnaes: ['0010100 indisponível'] }))
@@ -168,9 +171,8 @@ describe('busca empresarial unificada',()=>{
 })
 
 async function chooseCode(user: ReturnType<typeof userEvent.setup>, code: string) {
+ vi.mocked(cnpjApi.cnaes).mockResolvedValue({ results: [{ codigo: code, descricao: 'Atividade teste' }], next: null, previous: null } as never)
  await user.click(screen.getByText('Demais consultas', { exact: true }));
- await user.click(screen.getByRole('button', {name:'Selecionar CNAEs'}));
- await user.type(screen.getByLabelText(/exato \(sete/),code);
- await user.click(screen.getByRole('button',{name:'Adicionar c\u00f3digo exato'}));
- await user.click(screen.getByRole('button',{name:'Confirmar'}));
+ await user.click(screen.getByRole('combobox', {name:'CNAEs espec\u00edficos'}));
+ await user.click(await screen.findByRole('option', {name:/Atividade teste/}));
 }

@@ -7,8 +7,9 @@ Entrega atual: preparação e consultas completas em Empresas e Sócios no modo 
 
 Empresas e Sócios, no modo Mapa, devem consultar apenas após seleção explícita
 de localidade e de CNAE e/ou período. A interface deve permitir qualquer CNAE
-do domínio publicado, seleção múltipla e edição em diálogos compactos, dentro
-de **Demais consultas**, sem controles duplicados ou rotulados como legado.
+do domínio publicado. Tipos por nome e datas ficam no corpo dos filtros;
+a seleção múltipla de CNAEs específicos fica em **Demais consultas**,
+sem diálogo ou controles duplicados.
 
 Interpretações propostas para revisão:
 
@@ -84,23 +85,33 @@ ou ambiguidade de correspondência não autoriza inferência por nome/prefixo.
 
 ## 4. Organização visual
 
+Revisão de 10/10/2026: o filtro principal **Tipo de estabelecimento** escolhe
+um tipo do catálogo publicado pela API (por exemplo, Restaurantes). A escolha
+substitui os CNAEs anteriores pelos códigos exatos do tipo e usa atividade
+principal. Não classifica empresas pelo nome. Em **Demais consultas**, **CNAEs
+específicos** permite busca por descrição, paginação e seleção múltipla com
+chips removíveis, sem diálogo. Editar os códigos passa a uma seleção
+personalizada. O campo de escopo permanece nessa seção, com secundárias
+habilitadas somente quando certificadas pela API. As datas ficam no corpo,
+sem bordas de grupo nem textos auxiliares. Aplicar continua sendo explícito.
+Esta revisão substitui as descrições históricas dos diálogos abaixo.
+
 O painel conserva a localidade e o botão **Aplicar filtros**. A seção recolhível
-**Demais consultas** agrupa atividade, período e demais filtros empresariais.
+**Demais consultas** agrupa CNAEs específicos e os demais filtros empresariais.
+Tipo de estabelecimento e datas ficam visíveis fora da seção.
 Mesmo recolhida, exibe resumo das escolhas aplicadas e indicador de rascunho.
 Recolher não limpa valores e não remove dados da submissão.
 
-| Controle | Edição | Resumo fora do diálogo |
+| Controle | Edição | Seleção visível |
 | --- | --- | --- |
-| Selecionar CNAEs | Diálogo com busca e seleção múltipla | Códigos/descrições escolhidos, quantidade e escopo de atividade |
-| Definir período | Diálogo com dois intervalos independentes | Campo temporal e limites, inclusive intervalos abertos |
+| Tipo de estabelecimento | Combobox com tipos do catálogo | Nome do tipo escolhido |
+| CNAEs específicos | Combobox múltiplo em Demais consultas | Chips de descrição e código |
+| Datas do estabelecimento | Dois pares de seletores de início e fim no corpo dos filtros | Campo temporal e limites, inclusive intervalos abertos |
 | Demais filtros | Campos compactos na seção | Valores escolhidos; sem defaults empresariais |
 
-Diálogos têm **Confirmar**, **Cancelar** e **Limpar**. Confirmar altera só o
-rascunho externo; cancelar/Escape restaura o estado anterior à abertura.
-Implementar título acessível, foco inicial, contenção de foco, retorno ao
-acionador, teclado e layout em 375/1440 px. Enter dentro do diálogo não aplica
-a consulta empresarial. Checkboxes usam estilo próprio, sem dimensões de
-input textual. Resumos e seleções devem continuar acessíveis em telas pequenas.
+Editar os controles altera somente o rascunho. Enter na busca CNAE seleciona
+a opção sem submeter o formulário. Escape fecha a lista sem limpar os chips.
+A busca paginada e o layout em 375/1440 px devem preservar a seleção.
 
 ## 5. CNAE geral e eliminação da duplicidade
 

@@ -1,10 +1,11 @@
-import { CnpjPeriodDialog } from './cnpj-period-dialog'
-import { PERIOD_KEYS, readPeriod, periodSummary } from '../utils/cnpj-period'
+import { PERIOD_GROUPS, readPeriod, validatePeriod, type Period } from '../utils/cnpj-period'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useRef, useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { cnpjApi } from '../api/receita-federal/cnpj/client'
 import { QueryError } from './query-state'
-import { CnaeReceitaDialog } from './cnae-receita-dialog'
+import { CnaeMultiselect } from './cnae-multiselect'
+import { CnpjOtherQueries } from './cnpj-other-queries'
+import { SearchableCombobox } from './searchable-combobox'
 import type { CodeDescription } from '../api/receita-federal/cnpj/types'
 
 export const B2B_FILTER_KEYS = ['segmentos', 'catalog_version', 'cnaes', 'atividade_escopo', 'inicio_atividade_de', 'inicio_atividade_ate', 'situacao_evento_de', 'situacao_evento_ate'] as const
@@ -37,33 +38,34 @@ export function applyB2BForm(data: FormData, next: URLSearchParams) {
   }
 }
 
-export function CnpjB2BFilters({ search, onDraftChange }: { search: URLSearchParams; onDraftChange?: () => void }) {
+export function CnpjB2BFilters({ search, onDraftChange, dirty = false, blocked = true, children }: { search: URLSearchParams; onDraftChange?: () => void; dirty?: boolean; blocked?: boolean; children?: ReactNode }) {
   const [period, setPeriod] = useState(() => readPeriod(search))
-  const [periodOpen, setPeriodOpen] = useState(false)
-  const periodTrigger = useRef<HTMLButtonElement>(null)
   const client = useQueryClient()
   const [legacy, setLegacy] = useState(search.get('cnae') ?? '')
   const [segments, setSegments] = useState(search.get('segmentos') ?? '')
-  const [resolve, setResolve] = useState(false)
   const [reviewError, setReviewError] = useState('')
-  const [open, setOpen] = useState(false)
-  const trigger = useRef<HTMLButtonElement>(null)
+  const [type, setType] = useState<string | null>(null)
   const [scope, setScope] = useState(search.get('atividade_escopo') ?? 'principal')
   const [items, setItems] = useState<CodeDescription[]>((search.get('cnaes') ?? '').split(',').filter(Boolean).map(codigo => client.getQueryData<CodeDescription>(['cnpj', 'cnae-label', codigo]) ?? ({ codigo, descricao: 'Literal da URL; descrição ainda não consultada' })))
   const capability = useActivityCapability()
-  const catalog = useQuery({ queryKey: ['cnpj', 'segments-review'], enabled: resolve && Boolean(segments), queryFn: ({ signal }) => cnpjApi.segments(signal), retry: false, refetchOnWindowFocus: false, refetchOnReconnect: false })
+  const catalog = useQuery({ queryKey: ['cnpj', 'segments-review'], queryFn: ({ signal }) => cnpjApi.segments(signal), retry: false, refetchOnWindowFocus: false, refetchOnReconnect: false })
   const selected = segments.split(',').filter(Boolean)
   const reviewed = catalog.data?.segments.filter(segment => selected.includes(segment.id)) ?? []
   const validReview = Boolean(catalog.data && search.get('catalog_version') === catalog.data.catalog_version && selected.every(id => catalog.data!.segments.some(segment => segment.id === id)) && !legacy)
-  return <fieldset>
-    <legend>CNAEs e datas do estabelecimento</legend>
+  return <div className="cnpj-primary-filters">
+    <SearchableCombobox label="Tipo de estabelecimento" value={type ?? catalog.data?.segments.find(segment => scope === 'principal' && segment.codes.length === items.length && segment.codes.every(code => items.some(item => item.codigo === code)))?.id ?? (items.length ? 'custom' : '')} loading={catalog.isPending} options={[{ value: '', label: 'Todos os tipos' }, ...(items.length ? [{ value: 'custom', label: 'Seleção personalizada' }] : []), ...(catalog.data?.segments ?? []).map(segment => ({ value: segment.id, label: segment.label }))]} onChange={value => {
+      if (value === 'custom') return
+      const segment = catalog.data?.segments.find(item => item.id === value)
+      const codes = segment ? segment.codes.map(codigo => segment.activities.find(item => item.codigo === codigo) ?? { codigo, descricao: segment.label }) : []
+      for (const item of codes) client.setQueryData(['cnpj', 'cnae-label', item.codigo], item)
+      setItems(codes); setScope('principal'); setType(value); setSegments(''); setLegacy(''); onDraftChange?.()
+    }} />
     {capability.isError ? <QueryError error={capability.error} retry={() => void capability.refetch()} /> : null}
+    {catalog.isError ? <QueryError error={catalog.error} retry={() => void catalog.refetch()} /> : null}
     {reviewError ? <p role="alert">{reviewError}</p> : null}
     <input type="hidden" name="cnae" value={legacy} />
     {segments ? <><input type="hidden" name="segmentos" value={segments} /><input type="hidden" name="catalog_version" value={search.get('catalog_version') ?? ''} />
       <p role="alert">Revise segmentos: {segments}. Versão: {search.get('catalog_version') ?? 'ausente'}.</p>
-      <button type="button" onClick={() => setResolve(true)}>Resolver segmentos para revisão</button>
-      {catalog.isError ? <QueryError error={catalog.error} retry={() => void catalog.refetch()} /> : null}
       {catalog.data ? <><ul>{reviewed.flatMap(segment => segment.activities.map(item => <li key={`${segment.id}-${item.codigo}`}>{item.codigo} · {item.descricao}</li>))}</ul>
       {!validReview ? <p role="alert">Segmento desconhecido, versão divergente ou conflito. Corrija a seleção.</p> : null}
       <button type="button" disabled={!validReview} onClick={() => { const codes = [...items, ...reviewed.flatMap(segment => segment.activities)]; if (codes.length > 100) { setReviewError('Limite de 100 CNAEs. Remova itens antes de confirmar.'); return } for (const item of codes) client.setQueryData(['cnpj', 'cnae-label', item.codigo], item); setItems(codes); setSegments(''); setReviewError(''); onDraftChange?.() }}>Confirmar revisão dos códigos</button></> : null}
@@ -74,13 +76,21 @@ export function CnpjB2BFilters({ search, onDraftChange }: { search: URLSearchPar
       <button type="button" onClick={() => { setLegacy(''); onDraftChange?.() }}>Remover CNAE conflitante</button></> : null}
     <input type="hidden" name="cnaes" value={items.map(item => item.codigo).join(',')} />
     <input type="hidden" name="atividade_escopo" value={scope} />
-    <button ref={trigger} type="button" onClick={() => setOpen(true)}>Selecionar CNAEs</button>
-    <p>{items.length}/100 CNAEs · {scope === 'principal' ? 'Somente principal' : 'Principal ou secundárias'}</p>
-    <ul>{items.map((item, index) => <li key={`${item.codigo}-${index}`}>{item.codigo} · {item.descricao}<button type="button" onClick={() => { setItems(previous => previous.filter((_, position) => position !== index)); onDraftChange?.() }}>Remover {item.codigo}</button></li>)}</ul>
-    {open ? <CnaeReceitaDialog trigger={trigger.current} initial={items} scope={scope} secondary={capability.data === true} close={() => setOpen(false)} confirm={(codes, activityScope) => { for (const item of codes) client.setQueryData(['cnpj', 'cnae-label', item.codigo], item); setItems(codes); setScope(activityScope); setOpen(false); onDraftChange?.() }} /> : null}
-    {PERIOD_KEYS.map(key => <input key={key} type="hidden" name={key} value={period[key]} />)}
-    <button type="button" ref={periodTrigger} onClick={() => setPeriodOpen(true)}>Definir período</button>
-    <p aria-label="Resumo do período">{periodSummary(period)}</p>
-    {periodOpen ? <CnpjPeriodDialog initial={period} trigger={periodTrigger.current} close={() => setPeriodOpen(false)} confirm={next => { setPeriod(next); setPeriodOpen(false); onDraftChange?.() }} /> : null}
-  </fieldset>
+    <fieldset className="cnpj-period-fields">
+      <legend>Datas do estabelecimento</legend>
+      {PERIOD_GROUPS.map(({ prefix, label }) => <fieldset key={prefix}>
+        <legend>{label}</legend>
+        <div className="cnpj-date-range">{(['de', 'ate'] as const).map(end => {
+          const key = `${prefix}_${end}` as keyof Period
+          return <label key={key}>{end === 'de' ? 'Início' : 'Fim'}<input aria-label={`${label}: ${end === 'de' ? 'de' : 'até'}`} type="date" name={key} value={period[key]} onChange={event => { setPeriod(previous => ({ ...previous, [key]: event.target.value })); onDraftChange?.() }} /></label>
+        })}</div>
+      </fieldset>)}
+      {validatePeriod(period) ? <p role="alert">{validatePeriod(period)}</p> : null}
+    </fieldset>
+    <CnpjOtherQueries search={search} dirty={dirty} blocked={blocked}>
+      <CnaeMultiselect items={items} onChange={codes => { for (const item of codes) client.setQueryData(['cnpj', 'cnae-label', item.codigo], item); setItems(codes); setType('custom'); onDraftChange?.() }} />
+      <label>Atividades consideradas<select value={scope} onChange={event => { setScope(event.target.value); setType('custom'); onDraftChange?.() }}><option value="principal">Somente principal</option><option value="principal_ou_secundaria" disabled={capability.data !== true}>Principal ou secundárias</option></select></label>
+      {children}
+    </CnpjOtherQueries>
+  </div>
 }

@@ -1,47 +1,5 @@
 import { test, expect, openOtherQueries } from './fixtures'
 
-test('CNAE: painel em 375px, seleção literal e reinício consciente após 409', async ({ page, evidence }, testInfo) => {
-  test.setTimeout(60_000)
-  await page.setViewportSize({ width: 375, height: 900 })
-  await page.goto('/receita-federal/cnpj?modo=mapa&uf=MG&municipio=4123&cnaes=5611201,5611201&atividade_escopo=principal&page=1')
-  await openOtherQueries(page)
-  await page.getByRole('button', { name: 'Selecionar CNAEs', exact: true }).click()
-  const dialog = page.getByRole('dialog', { name: 'Selecionar CNAEs' })
-  await page.getByRole('button', { name: 'Consultar catálogo oficial CNAE', exact: true }).click()
-  const panel = page.getByRole('region', { name: 'Consulta do catálogo oficial CNAE' })
-  await expect(panel.getByText('CNAE-Subclasses 2.3', { exact: true })).toBeVisible()
-  await panel.getByText('Proveniência, cobertura e contagens globais', { exact: true }).click()
-  await expect(panel.getByText('a'.repeat(64), { exact: true })).toBeVisible()
-  await panel.getByText('Proveniência, cobertura e contagens globais', { exact: true }).click()
-  await panel.getByRole('button', { name: 'Consultar nós CNAE' }).click()
-  await panel.getByRole('button', { name: 'Selecionar 0010100' }).click()
-  await expect(dialog.getByRole('button', { name: 'Remover 5611201', exact: true })).toHaveCount(2)
-  await expect(dialog.getByRole('button', { name: 'Remover 0010100', exact: true })).toBeVisible()
-  const dimension = await page.evaluate(() => ({ width: document.documentElement.clientWidth, content: document.documentElement.scrollWidth }))
-  expect(dimension.content).toBeLessThanOrEqual(dimension.width + 1)
-  await panel.scrollIntoViewIfNeeded()
-  await testInfo.attach('cnae-375', { body: await page.screenshot(), contentType: 'image/png' })
-  const catalogCalls = () => evidence.requests.filter(row => row.path.endsWith('/cnae/catalogo/')).length
-  const nodeCalls = () => evidence.requests.filter(row => row.path.endsWith('/cnae/nos/')).length
-  evidence.cnaeChanged = true
-  await panel.getByRole('button', { name: 'Próxima página CNAE' }).click()
-  await expect(panel.getByRole('alert')).toContainText('A publicação CNAE mudou')
-  await expect(panel.getByRole('button', { name: 'Selecionar 0010100' })).toHaveCount(0)
-  await expect(dialog.getByRole('button', { name: 'Remover 0010100', exact: true })).toBeVisible()
-  expect(catalogCalls()).toBe(1)
-  expect(nodeCalls()).toBe(2)
-  await panel.getByRole('button', { name: 'Reiniciar com a publicação atual' }).click()
-  await expect(panel.getByText('b'.repeat(64), { exact: true })).toBeVisible()
-  await expect(panel.getByRole('button', { name: 'Selecionar 0010100' })).toHaveCount(0)
-  expect(catalogCalls()).toBe(2)
-  expect(nodeCalls()).toBe(2)
-  await expect(dialog.getByRole('button', { name: 'Remover 0010100', exact: true })).toBeVisible()
-  expect(evidence.requests.filter(row => row.path.endsWith('/mapa/'))).toHaveLength(1)
-  await page.keyboard.press('Escape')
-  await expect(page.getByRole('button', { name: 'Consultar catálogo oficial CNAE', exact: true })).toBeFocused()
-  expect(evidence.requests.every(row => row.method === 'GET')).toBe(true)
-})
-
 for (const area of ['Empresas', 'Sócios'] as const) {
   test(`${area}: detalhe técnico e retorno preservam filtros, página e recarga`, async ({ page, evidence }) => {
     await page.setViewportSize({ width: 375, height: 900 })
