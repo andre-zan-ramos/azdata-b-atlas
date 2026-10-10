@@ -110,7 +110,30 @@ describe('busca empresarial unificada',()=>{
   it.each(['00123456','00123456000199'])('mantém CNPJ %s pesquisável com seletor visível',async q=>{renderPage(`/receita-federal/cnpj?q=${q}&page=1`);await screen.findByText('ATLAS LTDA');expect(screen.getByRole('combobox',{name:'Modo de correspondência'})).toBeVisible();expect(searchMock).toHaveBeenCalledWith(expect.objectContaining({q,q_modo:'contendo'}),expect.any(AbortSignal))})
   it('consulta o universo cartográfico separado da página e preserva a busca ao retornar',async()=>{const user=userEvent.setup();renderPage('/receita-federal/cnpj?modo=mapa&q=atlas&inicio_atividade_de=2025-01-01&uf=MG&page=2');expect(screen.getByRole('heading',{name:'Mapa de Empresas'})).toBeInTheDocument();await waitFor(()=>expect(mapMock).toHaveBeenCalledWith({uf:'MG',inicio_atividade_de:'2025-01-01'},expect.any(AbortSignal)));expect(mapMock.mock.calls[0][0]).not.toHaveProperty('page');expect(establishmentsMock).toHaveBeenCalledWith(expect.objectContaining({uf:'MG',page:2,page_size:10}),expect.any(AbortSignal));expect(searchMock).not.toHaveBeenCalled();await user.click(screen.getByRole('link',{name:'Busca'}));expect(await screen.findByText('ATLAS LTDA')).toBeInTheDocument();expect(screen.getByTestId('location')).toHaveTextContent('modo=busca&q=atlas&uf=MG&page=2')})
 
-  it('declara truncamento e mantém resultados sem coordenadas na lista',async()=>{mapMock.mockResolvedValue({b2b_context: { catalog_version: null, segmentos: [], cnaes: [], atividade_escopo: null },release:'2026-08',identity:{record:'establishment',key:'cnpj'},filters:{uf:'MG'},territories:[{codigo:'4123',codigo_ibge:'3106200',descricao:'Belo Horizonte',uf:'MG'}],coverage:{results_total:3000,points_total:2500,without_coordinates_total:500,returned_points:2000,limit:2000,maximum_limit:5000,truncated:true,points_match_results:true},points:[]});renderPage('/receita-federal/cnpj?modo=mapa&inicio_atividade_de=2025-01-01&uf=MG&page=1');expect(await screen.findByText(/2500 pontos para 3000 estabelecimentos/)).toHaveTextContent('Exibindo 2000 de 2500 pontos');expect(await screen.findByText('ATLAS')).toBeInTheDocument()})
+  it('does not interpret missing publication as zero establishments and puts status below the map', async () => {
+    const filters = { uf: 'MG', cnaes: '5611201', atividade_escopo: 'principal' as const }
+    mapMock.mockResolvedValue({ release: null, identity: { record: 'establishment', key: 'cnpj' }, filters, b2b_context: { catalog_version: null, segmentos: [], cnaes: ['5611201'], atividade_escopo: 'principal' }, territories: [], coverage: { results_total: 0, points_total: 0, without_coordinates_total: 0, returned_points: 0, limit: 2000, maximum_limit: 5000, truncated: false, points_match_results: true }, points: [] })
+    renderPage('/receita-federal/cnpj?modo=mapa&uf=MG&cnaes=5611201&atividade_escopo=principal')
+    const status = await screen.findByText(/isso n\u00e3o indica aus\u00eancia/)
+    const footer = screen.getByRole('contentinfo', { name: 'Status do mapa' })
+    expect(footer).toContainElement(status)
+    expect(screen.getByTestId('establishment-map').compareDocumentPosition(footer) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(screen.queryByText(/0 pontos para/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Nenhum ponto/)).not.toBeInTheDocument()
+    expect(await screen.findByText('ATLAS')).toBeInTheDocument()
+  })
+  it('applies active status to city and activity in both list and map only after submit', async () => {
+    const user = userEvent.setup()
+    renderPage('/receita-federal/cnpj?modo=mapa&uf=MG&municipio=4123&cnaes=5611201&atividade_escopo=principal')
+    await screen.findByText('ATLAS')
+    await user.click(screen.getByText('Demais consultas', { exact: true }))
+    await user.click(screen.getByRole('checkbox', { name: 'Somente empresas ativas' }))
+    expect(mapMock).toHaveBeenCalledTimes(1)
+    await user.click(screen.getByRole('button', { name: 'Aplicar filtros' }))
+    await waitFor(() => expect(mapMock).toHaveBeenLastCalledWith(expect.objectContaining({ uf: 'MG', municipio: '4123', cnaes: '5611201', situacao_cadastral: '2' }), expect.any(AbortSignal)))
+    expect(establishmentsMock).toHaveBeenLastCalledWith(expect.objectContaining({ uf: 'MG', municipio: '4123', cnaes: '5611201', situacao_cadastral: '2' }), expect.any(AbortSignal))
+  })
+  it('declara truncamento e mantém resultados sem coordenadas na lista',async()=>{mapMock.mockResolvedValue({b2b_context: { catalog_version: null, segmentos: [], cnaes: [], atividade_escopo: null },release:'2026-08',identity:{record:'establishment',key:'cnpj'},filters:{uf:'MG',inicio_atividade_de:'2025-01-01'},territories:[{codigo:'4123',codigo_ibge:'3106200',descricao:'Belo Horizonte',uf:'MG'}],coverage:{results_total:3000,points_total:2500,without_coordinates_total:500,returned_points:2000,limit:2000,maximum_limit:5000,truncated:true,points_match_results:true},points:[]});renderPage('/receita-federal/cnpj?modo=mapa&inicio_atividade_de=2025-01-01&uf=MG&page=1');expect(await screen.findByText(/2500 pontos para 3000 estabelecimentos/)).toHaveTextContent('Exibindo 2000 de 2500 pontos');expect(await screen.findByText('ATLAS')).toBeInTheDocument()})
   it('substitui modo inválido por busca e mantém os demais parâmetros',async()=>{renderPage('/receita-federal/cnpj?modo=grade&q=atlas&page=2');expect(await screen.findByText('ATLAS LTDA')).toBeInTheDocument();await waitFor(()=>expect(screen.getByTestId('location')).toHaveTextContent('/receita-federal/cnpj?modo=busca&q=atlas&page=2'))})
   it.each(['', '&uf=MG', '&cnaes=5611201&atividade_escopo=principal', '&uf=XX&cnae=5611201', '&uf=MG&cnae=bad', '&uf=MG&inicio_atividade_de=2025-02-30', '&uf=MG&inicio_atividade_de=2025-06-01&inicio_atividade_ate=2025-01-01', '&uf=MG&municipio=9999&cnae=5611201', '&uf=MG&uf=SP&cnae=5611201', '&uf=MG&cnae=5611201&cnaes=9313100&atividade_escopo=principal'])('bloqueia consultas empresariais incompletas ou inválidas %s', async suffix => {
     renderPage('/receita-federal/cnpj?modo=mapa' + suffix)

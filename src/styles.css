@@ -424,3 +424,6 @@ main:has(.map-workspace) > .app-footer { display: none; }
 .cnae-combobox-item small { display: block; color: var(--muted); }
 .cnae-combobox-pagination { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px; }
 .cnae-combobox-pagination button { padding: 5px 8px; }
+
+.cno-map-status { margin-top: 12px; color: var(--muted); font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; }
+.cno-map-status > p { margin: 8px 0 0; }

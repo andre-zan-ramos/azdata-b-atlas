@@ -407,3 +407,20 @@ sem execução operacional nesta thread.
 Verificação de fechamento: 66 testes de Empresas/Sócios, oito cenários Chromium
 da Etapa 5 e checagens UTF-8/whitespace aprovados novamente. Suítes completas
 e build da entrega preservados; alterações adicionais somente documentais.
+
+## Correção de status do mapa de Empresas - 10/10/2026
+
+Mensagens de cobertura, erro e seleção territorial ficam no rodapé abaixo
+do mapa. Release ausente representa publicação indisponível; seus zeros
+não comprovam ausência de estabelecimentos nem cobertura completa.
+O filtro explícito Somente empresas ativas envia `situacao_cadastral=2`
+apenas ao Aplicar, junto do mesmo município/CNAE da lista e do mapa.
+O campo de código continua disponível e sincronizado com essa opção.
+
+Inspeção estática da API: a consulta filtra estabelecimentos por
+município/atividade antes de verificar coordenadas. `active_release`
+exige `CnpjRelease(is_active=True, stage="loaded")`; quando não encontra
+publicação, o endpoint retorna `release=null` e cobertura zero.
+Isso explica a mensagem da captura, mas o estado real do servidor e a
+quantidade de restaurantes em Governador Valadares não foram verificados.
+Nenhum HTTP, banco ou geocodificação operacional foi executado.
