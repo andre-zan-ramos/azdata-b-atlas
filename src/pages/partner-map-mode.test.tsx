@@ -40,6 +40,7 @@ describe('Fase 5 — mapa de participações por estabelecimento', () => {
     vi.mocked(cnaeApi.nodes).mockResolvedValue(cnaePage([cnaeNode]))
     renderPage('/receita-federal/cnpj/socios?modo=mapa&inicio_atividade_de=2025-01-01&uf=MG&page=3')
     await screen.findAllByText('MARIA SILVA')
+    await user.click(screen.getByText('Demais consultas', { exact: true }))
     await user.click(screen.getByRole('button', { name: 'Selecionar CNAEs' }))
     await user.click(screen.getByRole('button', { name: 'Consultar catálogo oficial CNAE' }))
     await user.click(await screen.findByRole('button', { name: 'Consultar nós CNAE' }))
@@ -155,8 +156,8 @@ describe('Fase 5 — mapa de participações por estabelecimento', () => {
   it.each(['', '&uf=MG', '&cnaes=5611201&atividade_escopo=principal', '&uf=XX&cnae=5611201', '&uf=MG&cnae=bad', '&uf=MG&inicio_atividade_de=2025-02-30', '&uf=MG&inicio_atividade_de=2025-06-01&inicio_atividade_ate=2025-01-01', '&uf=MG&municipio=9999&cnae=5611201', '&uf=MG&uf=SP&cnae=5611201', '&uf=MG&cnae=5611201&cnaes=9313100&atividade_escopo=principal'])('bloqueia consultas empresariais incompletas ou inválidas %s', async suffix => {
     renderPage('/receita-federal/cnpj/socios?modo=mapa' + suffix)
     await screen.findByRole('button', { name: 'Aplicar filtros' })
-    await screen.findByRole('option', { name: /MG/ })
-    if (new URLSearchParams(suffix).get('uf') === 'MG') await screen.findByRole('option', { name: 'Belo Horizonte' })
+    await waitFor(() => expect(screen.getByRole('combobox', { name: 'UF' })).not.toHaveAttribute('aria-busy', 'true'))
+    if (new URLSearchParams(suffix).get('uf') === 'MG') await waitFor(() => expect(screen.getByRole('combobox', { name: 'Munic\u00edpio' })).not.toHaveAttribute('aria-busy', 'true'))
     expect(cnpjApi.partnerMap).not.toHaveBeenCalled(); expect(cnpjApi.partnerMapResults).not.toHaveBeenCalled()
     expect(screen.queryByText('Carregando resultados…')).not.toBeInTheDocument()
   })
@@ -164,14 +165,14 @@ describe('Fase 5 — mapa de participações por estabelecimento', () => {
     const user = userEvent.setup()
     renderPage('/receita-federal/cnpj/socios?modo=mapa')
     await user.click(await screen.findByRole('button', { name: 'Selecionar MG no mapa' }))
-    await screen.findByRole('option', { name: 'Belo Horizonte' }); await user.selectOptions(screen.getByLabelText('Município'), '4123')
+    await user.click(screen.getByRole('combobox', { name: 'Munic\u00edpio' })); await user.click(await screen.findByRole('option', { name: 'Belo Horizonte' }))
     await chooseCode(user, '5611201')
     expect(cnpjApi.partnerMap).not.toHaveBeenCalled(); expect(cnpjApi.partnerMapResults).not.toHaveBeenCalled()
     expect(screen.getByText('Alterações ainda não aplicadas.')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Aplicar filtros' }))
     await waitFor(() => expect(cnpjApi.partnerMap).toHaveBeenCalledWith(expect.objectContaining({ uf: 'MG', municipio: '4123', cnaes: '5611201' }), expect.any(AbortSignal)))
     await user.click(screen.getByRole('button', { name: 'Limpar filtros' }))
-    expect(screen.getByLabelText('UF')).toHaveValue('')
+    expect(screen.getByLabelText('UF')).toHaveValue('Brasil')
     expect(document.querySelector('input[name="cnaes"]')).toHaveValue('')
     expect(screen.queryByText('Carregando resultados…')).not.toBeInTheDocument()
   })
@@ -211,6 +212,7 @@ describe('Fase 5 — mapa de participações por estabelecimento', () => {
 })
 
 async function chooseCode(user: ReturnType<typeof userEvent.setup>, code: string) {
+ await user.click(screen.getByText('Demais consultas', { exact: true }));
  await user.click(screen.getByRole('button', {name:'Selecionar CNAEs'}));
  await user.type(screen.getByLabelText(/exato \(sete/),code);
  await user.click(screen.getByRole('button',{name:'Adicionar c\u00f3digo exato'}));

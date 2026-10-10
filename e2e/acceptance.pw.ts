@@ -1,9 +1,10 @@
-import { test, expect } from './fixtures'
+import { test, expect, openOtherQueries } from './fixtures'
 
 test('CNAE: painel em 375px, seleção literal e reinício consciente após 409', async ({ page, evidence }, testInfo) => {
   test.setTimeout(60_000)
   await page.setViewportSize({ width: 375, height: 900 })
   await page.goto('/receita-federal/cnpj?modo=mapa&uf=MG&municipio=4123&cnaes=5611201,5611201&atividade_escopo=principal&page=1')
+  await openOtherQueries(page)
   await page.getByRole('button', { name: 'Selecionar CNAEs', exact: true }).click()
   const dialog = page.getByRole('dialog', { name: 'Selecionar CNAEs' })
   await page.getByRole('button', { name: 'Consultar catálogo oficial CNAE', exact: true }).click()
@@ -61,7 +62,7 @@ for (const area of ['Empresas', 'Sócios'] as const) {
     await expect(page).toHaveURL(entry)
     await page.reload()
     if (await resultsTrigger.count()) await resultsTrigger.click()
-    await expect(page.getByRole('combobox', { name: 'Município', exact: true })).toHaveValue('4123')
+    await expect(page.getByRole('combobox', { name: 'Município', exact: true })).toHaveValue('Belo Horizonte')
     await expect(page.getByText('Página 2', { exact: true })).toBeVisible()
     expect(evidence.requests.filter(row => row.path.startsWith('/api/v1/receita-federal/')).every(row => row.method === 'GET')).toBe(true)
     expect(evidence.requests.some(row => row.path.includes('geolocation/request'))).toBe(false)

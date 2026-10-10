@@ -364,9 +364,11 @@ button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-v
 main:has(.map-workspace) { overflow: hidden; padding-top: 18px; padding-bottom: 18px; }
 main:has(.map-workspace) > .search-page { height: 100%; min-height: 0; display: flex; flex-direction: column; }
 main:has(.map-workspace) > .app-footer { display: none; }
-.map-workspace { flex: 1; min-height: 0; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: minmax(0, 1fr); align-items: stretch; }
+.map-workspace { flex: 1; min-height: 0; grid-template-columns: minmax(300px, 5fr) minmax(0, 6fr); grid-template-rows: minmax(0, 1fr); align-items: stretch; }
 .map-workspace-column { min-width: 0; min-height: 0; overflow-y: auto; overscroll-behavior-y: contain; scrollbar-gutter: stable; }
 .map-workspace-filters > .filter-card { min-height: 100%; align-content: start; }
+.map-workspace-column > .cno-map-card { min-height: 100%; display: flex; flex-direction: column; }
+.map-workspace .cno-map { flex: 1 0 260px; height: auto; }
 .map-workspace-column:focus-visible { outline: 2px solid #347b68; outline-offset: -2px; }
 @media (max-width: 850px) {
   .app-header { grid-template-columns: minmax(0, 1fr); gap: 10px; }
@@ -387,3 +389,16 @@ main:has(.map-workspace) > .app-footer { display: none; }
 .map-results-dialog > header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px; border-bottom: 1px solid var(--line); }
 .map-results-dialog h2 { margin: 0; font-size: 22px; }
 .map-results-dialog-body { min-height: 0; padding: 18px; overflow-y: auto; }
+
+.toast { position: fixed; right: 24px; bottom: 24px; z-index: 2000; display: flex; align-items: center; gap: 16px; max-width: min(440px, calc(100vw - 32px)); padding: 14px 18px; border: 1px solid var(--line); border-radius: 10px; background: var(--brand); color: white; box-shadow: 0 6px 24px #0003; }
+.toast button { flex: 0 0 32px; width: 32px; height: 32px; padding: 0; background: transparent; color: white; font-size: 24px; border: 0; }
+.toast button:focus-visible { outline: 2px solid white; outline-offset: 2px; }
+
+.searchable-combobox { position: relative; min-width: 0; }
+.searchable-combobox-control { display: flex; position: relative; }
+.searchable-combobox-control input { padding-right: 36px !important; }
+.searchable-combobox-control > button { position: absolute; right: 1px; top: 1px; bottom: 1px; width: 32px; padding: 0; background: transparent; color: var(--brand); border: 0; }
+.searchable-combobox-options { position: absolute; top: 100%; left: 0; right: 0; z-index: 1100; max-height: 240px; overflow-y: auto; border: 1px solid var(--line); border-radius: 6px; background: white; box-shadow: 0 4px 14px #0002; }
+.searchable-combobox-options > button { display: block; width: 100%; min-height: 36px; text-align: left; padding: 8px 10px; background: white; color: inherit; border: 0; border-radius: 0; }
+.searchable-combobox-options > button[data-active="true"], .searchable-combobox-options > button[aria-selected="true"] { background: #e6f0eb; }
+.searchable-combobox-options > p { margin: 10px; font-size: 13px; }

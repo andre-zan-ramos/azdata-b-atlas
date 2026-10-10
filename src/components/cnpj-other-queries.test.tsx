@@ -10,6 +10,7 @@ describe('Demais consultas', () => {
     client.setQueryData(['cnpj', 'cnae-label', '0010100'], { codigo: '0010100', descricao: 'Descrição Receita' })
     const view = render(<form><CnpjOtherQueries search={search} dirty blocked={false}><input name="porte" defaultValue="01" /></CnpjOtherQueries></form>, { wrapper: ({ children }) => <QueryClientProvider client={client}>{children}</QueryClientProvider> })
     const details = view.container.querySelector('details')!
+    expect(details.open).toBe(false)
     fireEvent.click(details.querySelector('summary')!)
     details.open = false
     expect(new FormData(view.container.querySelector('form')!).get('porte')).toBe('01')

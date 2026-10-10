@@ -1,8 +1,10 @@
+import { SearchableCombobox } from '../components/searchable-combobox'
+import { Toast } from '../components/toast'
 import { MapHelp } from '../components/map-help'
 import { MapWorkspace } from '../components/map-workspace'
 import { CnpjOtherQueries } from '../components/cnpj-other-queries'
 import { canonicalFilters } from '../utils/cnpj-map-context'
-import { mapEligibility, useMapDraft, useMunicipalities } from '../utils/cnpj-map-preparation'
+import { mapEligibility, useMapDraft, useMunicipalities, useMunicipalityMapSelection } from '../utils/cnpj-map-preparation'
 import { B2B_FILTER_KEYS, CnpjB2BFilters, applyB2BForm, useActivityCapability } from '../components/cnpj-b2b-filters'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { FormEvent, lazy, Suspense, useMemo, useState, useEffect } from 'react'
@@ -59,10 +61,7 @@ export function PartnerMapMode() {
     const state = states.data?.find(item => String(item.id) === code)
     if (state?.sigla) applyTerritory(state.sigla)
   }
-  const selectMunicipality = (code: string) => {
-    const matches = territories.filter(item => item.codigo_ibge === code)
-    if (draft.get('uf') && matches.length === 1) applyTerritory(draft.get('uf')!, matches[0].codigo)
-  }
+  const { selectMunicipality, selectionMessage, selectionMessageId, dismissSelectionMessage } = useMunicipalityMapSelection(draft.get('uf') ?? '', municipalities.data, municipalities.isSuccess, applyTerritory)
   const submitFilters = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     const data = new FormData(event.currentTarget)
@@ -83,9 +82,9 @@ export function PartnerMapMode() {
     <aside className="filter-card partner-map-filters">
     {eligibilityError && eligibilityError !== 'Selecione uma UF válida e CNAE e/ou período para aplicar filtros.' ? <p role="status">{eligibilityError}</p> : null}{validationError ? <p role="alert">{validationError}</p> : null}
       <h1>Mapa de Sócios</h1>
-      <label>UF<select aria-label="UF" value={draft.get('uf') ?? ''} onChange={event => applyTerritory(event.target.value)}><option value="">Brasil</option>{draft.get('uf') && states.isSuccess && !states.data.some(item => item.sigla === draft.get('uf')) ? <option value={draft.get('uf')!}>{draft.get('uf')} (UF inválida)</option> : null}{(states.data ?? []).map(state => <option key={state.id} value={state.sigla}>{state.sigla} · {state.nome}</option>)}</select></label>
+      <SearchableCombobox label="UF" value={draft.get('uf') ?? ''} options={[{ value: '', label: 'Brasil' }, ...(states.data ?? []).slice().sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')).map(state => ({ value: state.sigla ?? '', label: `${state.nome} (${state.sigla})` }))]} loading={states.isPending} onChange={applyTerritory} />
       {municipalities.isError ? <QueryError error={municipalities.error} retry={() => void municipalities.refetch()} /> : null}{states.isError ? <QueryError error={states.error} retry={() => void states.refetch()} /> : null}
-      <label>Município<select aria-label="Município" value={draft.get('municipio') ?? ''} disabled={!draft.get('uf') || municipalities.isFetching} onChange={event => applyTerritory(draft.get('uf') ?? '', event.target.value)}><option value="">Todos</option>{draft.get('municipio') && !territories.some(item => item.codigo === draft.get('municipio')) ? <option value={draft.get('municipio')!}>{draft.get('municipio')} (confirmar no domínio Receita)</option> : null}{territories.map(item => <option key={item.codigo} value={item.codigo}>{item.descricao}</option>)}</select></label>
+      <SearchableCombobox label="Município" value={draft.get('municipio') ?? ''} disabled={!draft.get('uf')} loading={municipalities.isFetching} options={[{ value: '', label: 'Todos' }, ...territories.slice().sort((a, b) => a.descricao.localeCompare(b.descricao, 'pt-BR')).map(item => ({ value: item.codigo, label: item.descricao }))]} emptyMessage="Nenhum município disponível para esta UF." onChange={code => applyTerritory(draft.get('uf') ?? '', code)} />
       <form key={formReset + PARTNER_MAP_FILTER_KEYS.map(key => filters[key]).join('|')} onChange={markDirty} onSubmit={submitFilters}>
         <CnpjOtherQueries search={search} dirty={dirty} blocked={blocked}><CnpjB2BFilters search={search} onDraftChange={markDirty} />
         <label>Nome do sócio (opcional)<input name="q" defaultValue={filters.q ?? ''} /></label>
@@ -101,7 +100,7 @@ export function PartnerMapMode() {
         {!blocked && map.isError ? <QueryError error={map.error} retry={() => { if (!blocked) void map.refetch() }} /> : null}
         {!blocked && map.data?.release === null ? <p role="status">Publicação CNPJ indisponível para o mapa.</p> : null}
         {!blocked && map.data && list.data && map.data.release !== null && !compatible ? <p role="alert">Mapa e resultados têm publicações ou filtros incompatíveis. <button type="button" onClick={() => { if (!blocked) { void map.refetch(); void list.refetch() } }}>Atualizar mapa e resultados</button></p> : null}
-        <Suspense fallback={<p role="status">Carregando mapa…</p>}><TerritoryMap uf={draft.get('uf') ?? ''} names={draft.get('uf') ? municipalityNames : stateNames} selectedMunicipalityIbge={selectedMunicipality?.codigo_ibge ?? null} points={points} returnTo={returnTo} onState={selectState} onMunicipality={selectMunicipality} /></Suspense>
+        {selectionMessage ? <Toast key={selectionMessageId} message={selectionMessage} onClose={dismissSelectionMessage} /> : null}<Suspense fallback={<p role="status">Carregando mapa…</p>}><TerritoryMap uf={draft.get('uf') ?? ''} names={draft.get('uf') ? municipalityNames : stateNames} selectedMunicipalityIbge={selectedMunicipality?.codigo_ibge ?? null} points={points} returnTo={returnTo} onState={selectState} onMunicipality={selectMunicipality} /></Suspense>
         {!blocked && map.data ? <p className="cno-map-coverage">{map.data.coverage.points_total} relações com coordenadas entre {map.data.coverage.results_total} relações participação/estabelecimento · {map.data.coverage.without_coordinates_total} sem coordenadas válidas. {map.data.coverage.truncated ? ` Exibindo ${map.data.coverage.returned_points} de ${map.data.coverage.points_total} relações no mapa.` : ' Nenhuma relação com coordenadas foi truncada.'}</p> : null}
         {!blocked && map.data && compatible && points.length === 0 ? <p role="status">Nenhum estabelecimento com coordenadas válidas neste recorte.</p> : null}
       </section>

@@ -1,10 +1,30 @@
 import { PERIOD_KEYS, readPeriod, validatePeriod } from './cnpj-period'
 import { useQuery } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { cnpjApi } from '../api/receita-federal/cnpj/client'
 import type { Municipality } from '../api/receita-federal/cnpj/types'
 
 const UFS = new Set('AC AL AP AM BA CE DF ES GO MA MT MS MG PA PB PR PE PI RJ RN RS RO RR SC SP SE TO'.split(' '))
+
+export function useMunicipalityMapSelection(uf: string, municipalities: Municipality[] | undefined, ready: boolean, select: (uf: string, code: string) => void) {
+  const [pending, setPending] = useState<{ uf: string; code: string; id: number } | null>(null)
+  const dismissSelectionMessage = useCallback(() => setPending(null), [])
+  useEffect(() => {
+    if (!pending) return
+    if (pending.uf !== uf) { setPending(null); return }
+    if (!ready) return
+    const matches = (municipalities ?? []).filter(item => item.uf === uf && item.codigo_ibge === pending.code)
+    if (matches.length === 1) { select(uf, matches[0].codigo); setPending(null) }
+  }, [pending, uf, municipalities, ready, select])
+  return {
+    selectMunicipality: (code: string) => setPending({ uf, code, id: Date.now() }),
+    selectionMessageId: pending?.id,
+    dismissSelectionMessage,
+    selectionMessage: pending && pending.uf === uf
+      ? ready ? 'Não foi possível selecionar esse município pelo mapa. Escolha-o no filtro Município.' : null
+      : null,
+  }
+}
 export function mapEligibility(search: URLSearchParams, municipalities: Municipality[] = [], complete = false, partner = false): string | null {
   for (const key of new Set(search.keys())) {
     if (search.getAll(key).length !== 1) return 'A URL contém parâmetros repetidos. Revise e aplique os filtros para consultar.'

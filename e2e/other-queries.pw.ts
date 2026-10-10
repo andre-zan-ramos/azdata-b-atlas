@@ -9,6 +9,8 @@ for (const area of ['', '/socios']) for (const width of [375, 1440]) {
     const section = page.locator('.cnpj-other-queries')
     const toggle = section.locator('summary')
     const applied = page.getByLabel('Resumo dos filtros aplicados')
+    await expect(section).not.toHaveAttribute('open')
+    await toggle.click()
     await expect(applied).toContainText('Nenhum recorte aplicado')
     await page.getByRole('button', { name: 'Selecionar CNAEs', exact: true }).click()
     const cnae = page.getByRole('dialog')
@@ -42,8 +44,8 @@ for (const area of ['', '/socios']) for (const width of [375, 1440]) {
       expect(call.params).toMatchObject({ uf: 'MG', cnaes: '0010100', atividade_escopo: 'principal', inicio_atividade_de: '2025-01-01', porte: '03', matriz_filial: '1', natureza_juridica: '2062', situacao_cadastral: '2' })
       if (area) expect(call.params).toMatchObject({ cnpj_basico: '00123456', q: 'MARIA' })
     }
-    // Applying remounts the form from the URL; collapse its restored section.
-    await toggle.click()
+    // Applying restores the form with its section initially collapsed.
+    await expect(section).not.toHaveAttribute('open')
     await expect(applied).toContainText('Aplicado: 1 CNAEs: 0010100')
     await expect(applied).toContainText('Porte: 03')
     await expect(section.getByRole('status')).toContainText('Sem alterações pendentes')

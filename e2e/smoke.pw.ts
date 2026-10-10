@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test'
-import { test, expect } from './fixtures'
+import { test, expect, openOtherQueries } from './fixtures'
 
 const areas = [
   { name: 'Empresas', path: '/receita-federal/cnpj', query: 'atlas', label: 'Encontre uma empresa', marker: 'Estabelecimento CNPJ 00123456000100. Abrir popup' },
@@ -32,7 +32,12 @@ for (const width of [1440, 375]) {
       await testInfo.attach('busca', { body: await page.screenshot(), contentType: 'image/png' })
 
       await page.getByRole('link', { name: 'Mapa', exact: true }).click()
-      await page.getByRole('combobox', { name: 'UF', exact: true }).selectOption('MG')
+      if (area.path.endsWith('/cno')) await page.getByRole('combobox', { name: 'UF', exact: true }).selectOption('MG')
+      else {
+        await page.getByRole('combobox', { name: 'UF', exact: true }).fill('minas')
+        await page.getByRole('option', { name: 'Minas Gerais (MG)', exact: true }).click()
+        await openOtherQueries(page)
+      }
       if (area.name === 'Obras') await page.getByRole('button', { name: 'Pesquisar', exact: true }).click()
       else {
         await page.getByRole('button', { name: 'Definir período', exact: true }).click()

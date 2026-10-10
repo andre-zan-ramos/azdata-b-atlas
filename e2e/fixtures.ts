@@ -1,9 +1,13 @@
-import { test as base, expect } from '@playwright/test'
+import { test as base, expect, type Page } from '@playwright/test'
 import type { BusinessSearchItem, EstablishmentMapPoint, GroupedPartnerSearchItem, PartnerMapItem } from '../src/api/receita-federal/cnpj/types'
 import { detail, fastPage, work } from '../src/test/cno-fixtures'
 import { cnaeCatalog, cnaeNode, cnaePage, publication } from '../src/test/cnae-fixtures'
 
 const release = 'browser-fixture'
+export async function openOtherQueries(page: Page) {
+  const section = page.locator('.cnpj-other-queries')
+  if (await section.getAttribute('open') === null) await section.locator('summary').click()
+}
 const municipality = { codigo: '4123', codigo_ibge: '3106200', descricao: 'Belo Horizonte', uf: 'MG' }
 const geo = { status: 'available', reason: null, precision: 'postal_code_approximation', latitude: -19.9, longitude: -43.9, source: 'fixture', observed_at: null, stale: false } as const
 const business: BusinessSearchItem = {

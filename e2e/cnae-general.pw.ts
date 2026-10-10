@@ -1,4 +1,4 @@
-import { test, expect } from './fixtures'
+import { test, expect, openOtherQueries } from './fixtures'
 
 for (const area of ['', '/socios']) for (const width of [375, 1440]) {
   test(`CNAE geral ${area || 'Empresas'} ${width}: edição isolada, páginas e teclado`, async ({ page, evidence }) => {
@@ -13,6 +13,7 @@ for (const area of ['', '/socios']) for (const width of [375, 1440]) {
     await page.goto(entry)
     const businessCalls = () => evidence.requests.filter(row => /\/(mapa|mapa\/resultados)\/$/.test(row.path))
     const trigger = page.getByRole('button', { name: 'Selecionar CNAEs', exact: true })
+    await openOtherQueries(page)
     await trigger.click()
     const dialog = page.getByRole('dialog', { name: 'Selecionar CNAEs' })
     await expect(dialog.getByLabel('Buscar descrição Receita')).toBeFocused()
@@ -31,6 +32,7 @@ for (const area of ['', '/socios']) for (const width of [375, 1440]) {
     await expect(trigger).toBeFocused()
     await expect(page).toHaveURL(entry)
     await expect(page.getByText('Alterações ainda não aplicadas.')).toBeVisible()
+    await openOtherQueries(page)
     await trigger.click()
     await expect(dialog.getByRole('button', { name: 'Remover 6201501' })).toBeVisible()
     await dialog.getByRole('button', { name: 'Limpar', exact: true }).click()

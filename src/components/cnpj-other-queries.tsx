@@ -23,7 +23,7 @@ export function CnpjOtherQueries({ search, dirty, blocked, children }: {
     periodSummary(readPeriod(search)),
     ...EXTRA_LABELS.flatMap(([key, label]) => search.has(key) ? [`${label}: ${search.get(key)}`] : []),
   ].join(' ')
-  return <details className="cnpj-other-queries" open>
+  return <details className="cnpj-other-queries">
     <summary>
       <span className="cnpj-other-title">Demais consultas</span>
       <span className="cnpj-applied-summary" aria-label="Resumo dos filtros aplicados">{blocked ? 'Nenhum recorte aplicado. Revise as escolhas para consultar.' : `Aplicado: ${applied}`}</span>

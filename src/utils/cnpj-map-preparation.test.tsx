@@ -1,10 +1,27 @@
 import { describe, expect, it, vi } from 'vitest'
-import { renderHook, waitFor } from '@testing-library/react'
-import { mapEligibility, useMunicipalities } from './cnpj-map-preparation'
+import { act, renderHook, waitFor } from '@testing-library/react'
+import { mapEligibility, useMunicipalities, useMunicipalityMapSelection } from './cnpj-map-preparation'
 import { Providers } from '../app/providers'
 import { cnpjApi } from '../api/receita-federal/cnpj/client'
 vi.mock('../api/receita-federal/cnpj/client', () => ({ cnpjApi: { municipalities: vi.fn() } }))
 describe('shared map preparation', () => {
+  it('retains a map click until the Receita domain arrives', async () => {
+    const select = vi.fn()
+    const rows = [{ codigo: '0001', uf: 'MG', descricao: 'Literal', codigo_ibge: '3106200' }]
+    const { result, rerender } = renderHook(({ ready }) => useMunicipalityMapSelection('MG', ready ? rows : undefined, ready, select), { initialProps: { ready: false } })
+    act(() => result.current.selectMunicipality('3106200'))
+    expect(select).not.toHaveBeenCalled()
+    rerender({ ready: true })
+    await waitFor(() => expect(select).toHaveBeenCalledWith('MG', '0001'))
+    expect(result.current.selectionMessage).toBeNull()
+  })
+  it('explains a missing crosswalk without guessing from the name', () => {
+    const select = vi.fn()
+    const { result } = renderHook(() => useMunicipalityMapSelection('MG', [{ codigo: '0001', uf: 'MG', descricao: 'Belo Horizonte', codigo_ibge: null }], true, select))
+    act(() => result.current.selectMunicipality('3106200'))
+    expect(select).not.toHaveBeenCalled()
+    expect(result.current.selectionMessage).toContain('Escolha-o no filtro Município')
+  })
   it.each(['uf=MG&cnaes=0010100&atividade_escopo=principal', 'uf=MG&inicio_atividade_de=2025-01-01', 'uf=MG&cnaes=5611201&atividade_escopo=principal&situacao_evento_ate=2025-01-01', 'uf=MG&municipio=0001&cnaes=0010100&atividade_escopo=principal'])('accepts explicit complete cuts %s', query => {
     expect(mapEligibility(new URLSearchParams(query), [{codigo:'0001', uf:'MG', descricao:'Literal', codigo_ibge:null}], true)).toBeNull()
   })
