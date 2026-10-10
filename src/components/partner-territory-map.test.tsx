@@ -7,7 +7,7 @@ import type { PartnerMapItem } from '../api/receita-federal/cnpj/types'
 import { validPartnerPoint } from '../utils/partner-map'
 import { PartnerTerritoryMap } from './partner-territory-map'
 
-vi.mock('../api/ibge/territories', () => ({ getMesh: vi.fn().mockResolvedValue({ type: 'FeatureCollection', features: [] }) }))
+vi.mock('../api/ibge/territories', () => ({ getMesh: vi.fn().mockResolvedValue({ type: 'FeatureCollection', features: [] }), listMunicipalities: vi.fn().mockResolvedValue([]) }))
 vi.mock('leaflet', () => ({ default: { geoJSON: () => ({ getBounds: () => ({ isValid: () => false }) }) } }))
 vi.mock('react-leaflet', async () => {
   const { forwardRef } = await import('react')

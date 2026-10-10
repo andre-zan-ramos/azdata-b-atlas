@@ -59,7 +59,10 @@ for (const area of ['', '/socios']) for (const width of [375, 1440]) {
     await start.fill('2024-01-01')
     await confirm()
     await expect(page.getByText('Alterações ainda não aplicadas.')).toBeVisible()
+    const resultsTrigger = page.getByRole('button', { name: 'Ver estabelecimentos', exact: true })
+    if (await resultsTrigger.count()) await resultsTrigger.click()
     await page.getByRole('button', { name: 'Próxima', exact: true }).click()
+    if (await resultsTrigger.count()) await page.locator('.map-results-dialog').getByRole('button', { name: 'Fechar', exact: true }).click()
     await expect.poll(() => business().length).toBe(3)
     expect(business().at(-1)?.params.inicio_atividade_de).toBe('2025-01-01')
     await expect(page.getByLabel('Resumo do período')).toContainText('01/01/2024')
@@ -86,7 +89,7 @@ for (const area of ['', '/socios']) {
     for (const suffix of ['&inicio_atividade_de=2025-01-01', '&uf=MG&situacao_evento_ate=2025-02-30', '&uf=MG&inicio_atividade_de=2025-01-01&inicio_atividade_de=2025-02-01']) {
       await page.goto(base + suffix)
       await expect(page.getByRole('button', { name: 'Definir período' })).toBeVisible()
-      await expect(page.getByText(/consulta aguarda|Selecione|parâmetros repetidos|datas válidas/).first()).toBeVisible()
+      await expect(page.getByText(/Nenhum recorte aplicado|parâmetros repetidos|datas válidas/).first()).toBeVisible()
       expect(business()).toHaveLength(0)
     }
     const entry = base + '&uf=MG&municipio=4123&cnaes=0010100,6201501&atividade_escopo=principal&inicio_atividade_de=2025-01-01&inicio_atividade_ate=2025-12-31&situacao_evento_de=2025-06-01&situacao_evento_ate=2025-08-01&situacao_cadastral=2&page=2&return_to=%2Fdestino'

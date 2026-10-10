@@ -96,9 +96,10 @@ describe('Fase 5 — mapa de participações por estabelecimento', () => {
   it('declara semântica, cobertura, truncamento, duplicatas e links com retorno completo', async () => {
     renderPage('/receita-federal/cnpj/socios?modo=mapa&inicio_atividade_de=2025-01-01&uf=MG&page=2')
     await waitFor(() => expect(screen.getByTestId('points')).toHaveTextContent('2 pontos'))
-    expect(screen.getByText(/A localização pertence exclusivamente/)).toBeInTheDocument()
+    expect(screen.queryByText(/A localização pertence exclusivamente/)).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Informações do mapa' })).toBeInTheDocument()
     expect(screen.getByText(/Exibindo 2 de 11/)).toBeInTheDocument()
-    expect(screen.getByText(/Mapa e lista têm filtros/)).toBeInTheDocument()
+    expect(screen.queryByText(/Mapa e lista têm filtros/)).not.toBeInTheDocument()
     expect(screen.getAllByText('MARIA SILVA')).toHaveLength(2)
     expect(screen.getByText(/Sem coordenadas válidas/)).toBeInTheDocument()
     const back = encodeURIComponent('/receita-federal/cnpj/socios?modo=mapa&inicio_atividade_de=2025-01-01&uf=MG&page=2')

@@ -69,6 +69,7 @@ export const test = base.extend<{ evidence: BrowserEvidence }>({
       if (/^[abc]\.tile\.openstreetmap\.org$/.test(url.hostname)) return route.fulfill({ contentType: 'image/png', body: tile })
       if (url.hostname === 'servicodados.ibge.gov.br') {
         if (url.pathname.endsWith('/estados')) return json([{ id: 31, nome: 'Minas Gerais', sigla: 'MG' }])
+        if (url.pathname.endsWith('/estados/MG/municipios')) return json([{ id: 3106200, nome: 'Belo Horizonte' }, { id: 3127701, nome: 'Governador Valadares' }])
         if (url.pathname.includes('/malhas/')) return json(polygon(url.pathname.includes('/estados/') ? '3106200' : '31'))
       }
       if (url.origin !== 'http://127.0.0.1:9') {

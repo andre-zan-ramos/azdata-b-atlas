@@ -1,3 +1,5 @@
+import { MapHelp } from '../components/map-help'
+import { MapWorkspace } from '../components/map-workspace'
 import { CnpjOtherQueries } from '../components/cnpj-other-queries'
 import { canonicalFilters } from '../utils/cnpj-map-context'
 import { mapEligibility, useMapDraft, useMunicipalities } from '../utils/cnpj-map-preparation'
@@ -77,9 +79,10 @@ export function PartnerMapMode() {
     if (!error) { resetDraft(next); setSearch(next) }
   }
   const changePage = (value: number) => { if (blocked) return; const next = new URLSearchParams(search); next.set('page', String(value)); setSearch(next) }
-  return <div className="cno-explorer">
-    {eligibilityError ? <p role="status">{eligibilityError}</p> : null}{validationError ? <p role="alert">{validationError}</p> : null}
-    <aside className="filter-card partner-map-filters"><h1>Mapa de Sócios</h1><p>Explore participações por estabelecimento.</p>
+  return <MapWorkspace filters={
+    <aside className="filter-card partner-map-filters">
+    {eligibilityError && eligibilityError !== 'Selecione uma UF válida e CNAE e/ou período para aplicar filtros.' ? <p role="status">{eligibilityError}</p> : null}{validationError ? <p role="alert">{validationError}</p> : null}
+      <h1>Mapa de Sócios</h1>
       <label>UF<select aria-label="UF" value={draft.get('uf') ?? ''} onChange={event => applyTerritory(event.target.value)}><option value="">Brasil</option>{draft.get('uf') && states.isSuccess && !states.data.some(item => item.sigla === draft.get('uf')) ? <option value={draft.get('uf')!}>{draft.get('uf')} (UF inválida)</option> : null}{(states.data ?? []).map(state => <option key={state.id} value={state.sigla}>{state.sigla} · {state.nome}</option>)}</select></label>
       {municipalities.isError ? <QueryError error={municipalities.error} retry={() => void municipalities.refetch()} /> : null}{states.isError ? <QueryError error={states.error} retry={() => void states.refetch()} /> : null}
       <label>Município<select aria-label="Município" value={draft.get('municipio') ?? ''} disabled={!draft.get('uf') || municipalities.isFetching} onChange={event => applyTerritory(draft.get('uf') ?? '', event.target.value)}><option value="">Todos</option>{draft.get('municipio') && !territories.some(item => item.codigo === draft.get('municipio')) ? <option value={draft.get('municipio')!}>{draft.get('municipio')} (confirmar no domínio Receita)</option> : null}{territories.map(item => <option key={item.codigo} value={item.codigo}>{item.descricao}</option>)}</select></label>
@@ -91,19 +94,16 @@ export function PartnerMapMode() {
         <button>Aplicar filtros</button><button type="button" onClick={clearFilters}>Limpar filtros</button>
       </form>
     </aside>
-    <div>
-      <p className="hint">A localização pertence exclusivamente ao estabelecimento. Nome e documento mascarado não comprovam uma identidade civil única. Cada relação publicada é preservada.</p>
+    }>
       <section className="cno-map-card" aria-label="Explorar participações por estabelecimento no mapa">
-        <div className="cno-map-heading"><div><h2>{selectedMunicipality?.descricao ?? (draft.get('uf') ? `Municípios de ${draft.get('uf')}` : 'Explore o Brasil')}</h2><p>Clique em {draft.get('uf') ? 'um município' : 'uma UF'} para editar o rascunho; depois aplique os filtros.</p></div>{draft.get('uf') ? <button type="button" onClick={clearFilters}>Voltar ao Brasil</button> : null}</div>
+        <div className="cno-map-heading"><div><h2>{selectedMunicipality?.descricao ?? (draft.get('uf') ? `Municípios de ${draft.get('uf')}` : 'Explore o Brasil')}</h2></div><MapHelp />{draft.get('uf') ? <button type="button" onClick={clearFilters}>Voltar ao Brasil</button> : null}</div>
         {!blocked && map.isFetching ? <p role="status">Carregando cobertura cartográfica…</p> : null}
         {!blocked && map.isError ? <QueryError error={map.error} retry={() => { if (!blocked) void map.refetch() }} /> : null}
         {!blocked && map.data?.release === null ? <p role="status">Publicação CNPJ indisponível para o mapa.</p> : null}
         {!blocked && map.data && list.data && map.data.release !== null && !compatible ? <p role="alert">Mapa e resultados têm publicações ou filtros incompatíveis. <button type="button" onClick={() => { if (!blocked) { void map.refetch(); void list.refetch() } }}>Atualizar mapa e resultados</button></p> : null}
         <Suspense fallback={<p role="status">Carregando mapa…</p>}><TerritoryMap uf={draft.get('uf') ?? ''} names={draft.get('uf') ? municipalityNames : stateNames} selectedMunicipalityIbge={selectedMunicipality?.codigo_ibge ?? null} points={points} returnTo={returnTo} onState={selectState} onMunicipality={selectMunicipality} /></Suspense>
-        {!blocked && map.data ? <p className="cno-map-coverage">{map.data.coverage.points_total} relações com coordenadas entre {map.data.coverage.results_total} relações participação/estabelecimento · {map.data.coverage.without_coordinates_total} sem coordenadas válidas · release {map.data.release ?? 'indisponível'}.{map.data.coverage.truncated ? ` Exibindo ${map.data.coverage.returned_points} de ${map.data.coverage.points_total} relações no mapa (limite ${map.data.coverage.limit}; máximo ${map.data.coverage.maximum_limit}).` : ' Nenhuma relação com coordenadas foi truncada.'} {compatible ? 'Mapa e lista têm filtros e publicação compatíveis.' : 'Compatibilidade entre mapa e lista ainda não confirmada.'}</p> : null}
+        {!blocked && map.data ? <p className="cno-map-coverage">{map.data.coverage.points_total} relações com coordenadas entre {map.data.coverage.results_total} relações participação/estabelecimento · {map.data.coverage.without_coordinates_total} sem coordenadas válidas. {map.data.coverage.truncated ? ` Exibindo ${map.data.coverage.returned_points} de ${map.data.coverage.points_total} relações no mapa.` : ' Nenhuma relação com coordenadas foi truncada.'}</p> : null}
         {!blocked && map.data && compatible && points.length === 0 ? <p role="status">Nenhum estabelecimento com coordenadas válidas neste recorte.</p> : null}
-        <p className="cno-map-caption">Localização aproximada pelo CEP. Um marcador pode reunir várias relações no mesmo local; abra o popup para ver todas. Relações sem coordenadas permanecem na lista. Compatibilidade de release e filtros não garante snapshot transacional: CNPJ não possui versionamento por linha.</p>
-        {!blocked && map.data ? <details><summary>Filtros efetivamente aplicados</summary><dl>{Object.entries(map.data.filters).map(([key, value]) => <div key={key}><dt>{key}</dt><dd>{value}</dd></div>)}</dl></details> : null}
       </section>
       <section className="cno-results-panel" aria-label="Resultados de participações por estabelecimento"><h2>Participações por estabelecimento do recorte</h2>
         {list.isPending && !blocked ? <p role="status">Carregando resultados…</p> : null}
@@ -117,6 +117,5 @@ export function PartnerMapMode() {
           <td><PartnerMapLinks item={item} returnTo={returnTo} /></td>
         </tr>)}</tbody></table></div><Pagination page={view.page} pageSize={view.pageSize} count={view.count} previous={view.hasPrevious} next={view.hasNext} onPage={changePage} /></> : null}
       </section>
-    </div>
-  </div>
+  </MapWorkspace>
 }

@@ -29,6 +29,6 @@ export function CnpjOtherQueries({ search, dirty, blocked, children }: {
       <span className="cnpj-applied-summary" aria-label="Resumo dos filtros aplicados">{blocked ? 'Nenhum recorte aplicado. Revise as escolhas para consultar.' : `Aplicado: ${applied}`}</span>
       <span className="cnpj-draft-status" role="status">{dirty ? 'Alterações ainda não aplicadas.' : 'Sem alterações pendentes.'}</span>
     </summary>
-    <div className="cnpj-other-fields"><p className="hint">Rascunho: edite as escolhas abaixo e use Aplicar filtros.</p>{children}</div>
+    <div className="cnpj-other-fields">{children}</div>
   </details>
 }

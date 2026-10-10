@@ -1,4 +1,6 @@
 import { Link, Navigate, NavLink, Outlet, Route, Routes, useLocation } from 'react-router'
+import { useState } from 'react'
+import { AreaModeHeaderContext } from '../components/area-mode-switcher'
 import { HomePage } from '../pages/home-page'
 import { NotFoundPage } from '../pages/not-found-page'
 import { EstablishmentsPage } from '../pages/establishments-page'
@@ -10,14 +12,16 @@ import { CnoSearchPage } from '../pages/cno-search-page'
 import { CnoDetailPage } from '../pages/cno-detail-page'
 
 function AppShell() {
+  const [modeHeader, setModeHeader] = useState<HTMLDivElement | null>(null)
   return (
-    <div className="app-shell">
+    <AreaModeHeaderContext.Provider value={modeHeader}><div className="app-shell">
       <a className="skip-link" href="#main">Pular para o conteúdo</a>
       <header className="app-header">
         <Link className="brand" to="/" aria-label="B-Atlas — página inicial">
           <span className="brand-mark" aria-hidden="true">B.</span>
           <span><strong>B-Atlas</strong><small>Business Atlas</small></span>
         </Link>
+        <div className="header-mode" ref={setModeHeader} />
         <nav aria-label="Navegação principal">
           <NavLink to="/" end>Início</NavLink>
           <NavLink to="/receita-federal/cnpj" end>Empresas</NavLink>
@@ -25,9 +29,8 @@ function AppShell() {
           <NavLink to="/receita-federal/cno">Obras</NavLink>
         </nav>
       </header>
-      <main id="main" tabIndex={-1}><Outlet /></main>
-      <footer className="app-footer"><span>B-Atlas</span><span>Business Atlas</span></footer>
-    </div>
+      <main id="main" tabIndex={-1}><Outlet /><footer className="app-footer"><span>B-Atlas</span><span>Business Atlas</span></footer></main>
+    </div></AreaModeHeaderContext.Provider>
   )
 }
 

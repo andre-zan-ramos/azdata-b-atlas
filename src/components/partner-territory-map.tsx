@@ -1,3 +1,5 @@
+import { useTerritorySelection } from './use-territory-selection'
+import { useTerritoryLabels } from './use-territory-labels'
 import { useQuery } from '@tanstack/react-query'
 import L from 'leaflet'
 import { useEffect } from 'react'
@@ -22,6 +24,8 @@ function Fit({ mesh, selectedMunicipalityIbge }: { mesh: Mesh; selectedMunicipal
 export function PartnerTerritoryMap({ uf, onState, onMunicipality, names, selectedMunicipalityIbge, points, returnTo }: {
   uf: string; onState: (code: string) => void; onMunicipality: (code: string) => void; names: Map<string, string>; selectedMunicipalityIbge: string | null; points: PartnerMapItem[]; returnTo: string
 }) {
+  const selectTerritory = useTerritorySelection(uf, onState, onMunicipality)
+  const { labels, labelKey } = useTerritoryLabels(uf, names)
   const mesh = useQuery({ queryKey: ['ibge', 'partner-mesh', uf], queryFn: ({ signal }) => getMesh(uf || undefined, signal), staleTime: 86400000, retry: false })
   if (mesh.isPending) return <p role="status" className="cno-map-state">Carregando mapa do IBGE…</p>
   if (mesh.isError) return <div className="cno-map-state" role="alert">Mapa indisponível. <button type="button" onClick={() => void mesh.refetch()}>Tentar novamente</button></div>
@@ -36,13 +40,13 @@ export function PartnerTerritoryMap({ uf, onState, onMunicipality, names, select
     items.push(point)
     positions.set(key, items)
   }
-  return <MapContainer className="cno-map" center={[-14.2, -51.9]} zoom={4} scrollWheelZoom={false}>
+  return <MapContainer className="cno-map" center={[-14.2, -51.9]} zoom={4} scrollWheelZoom={true}>
     <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
     <Fit mesh={mesh.data} selectedMunicipalityIbge={selectedMunicipalityIbge} />
-    <GeoJSON key={`${uf || 'BR'}-${names.size}-${selectedMunicipalityIbge ?? ''}`} data={mesh.data as GeoJSON.GeoJsonObject} style={feature => ({ color: String(feature?.properties?.codarea ?? '') === selectedMunicipalityIbge ? '#8a5a16' : '#267864', weight: 1.5, fillColor: '#58aa8f', fillOpacity: .24 })} onEachFeature={(feature, layer) => {
+    <GeoJSON key={`${uf || 'BR'}-${labelKey}-${selectedMunicipalityIbge ?? ''}`} data={mesh.data as GeoJSON.GeoJsonObject} style={feature => ({ color: String(feature?.properties?.codarea ?? '') === selectedMunicipalityIbge ? '#8a5a16' : '#267864', weight: 1.5, fillColor: '#58aa8f', fillOpacity: .24 })} onEachFeature={(feature, layer) => {
       const code = String(feature.properties?.codarea ?? '')
-      const name = names.get(code) ?? code
-      const select = () => { if (uf) onMunicipality(code); else onState(code) }
+      const name = labels.get(code) ?? (uf ? 'Munic\u00edpio' : 'UF')
+      const select = () => selectTerritory(code)
       layer.bindTooltip(name, { sticky: true }); layer.on('click', select)
       layer.on('add', () => {
         const element = (layer as L.Path).getElement()

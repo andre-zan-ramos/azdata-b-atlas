@@ -13,6 +13,8 @@ async function checkPageWidth(page: Page) {
 }
 
 async function openResults(page: Page) {
+  const trigger = page.getByRole('button', { name: 'Ver estabelecimentos', exact: true })
+  if (await trigger.count()) await trigger.click()
   const summary = page.locator('.cno-results-disclosure > summary')
   if (await summary.count()) await summary.click()
   await expect(page.getByRole('region', { name: 'Resultados textuais' })).toBeVisible()
@@ -51,6 +53,8 @@ for (const width of [1440, 375]) {
         await results.evaluate(element => { element.scrollLeft = element.scrollWidth })
         expect(await results.evaluate(element => element.scrollWidth <= element.clientWidth || element.scrollLeft > 0)).toBe(true)
       }
+      const resultsDialog = page.locator('.map-results-dialog[open]')
+      if (await resultsDialog.count()) await resultsDialog.getByRole('button', { name: 'Fechar', exact: true }).click()
       await page.locator('.leaflet-container').scrollIntoViewIfNeeded()
       await testInfo.attach('mapa', { body: await page.screenshot(), contentType: 'image/png' })
     })
