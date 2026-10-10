@@ -1,4 +1,4 @@
-import { test, expect, openOtherQueries } from './fixtures'
+import { test, expect } from './fixtures'
 
 for (const area of ['', '/socios']) for (const width of [375, 1440]) {
   test(`CNAE geral ${area || 'Empresas'} ${width}: edição isolada, páginas e teclado`, async ({ page, evidence }) => {
@@ -12,8 +12,7 @@ for (const area of ['', '/socios']) for (const width of [375, 1440]) {
     const entry = `/receita-federal/cnpj${area}?modo=mapa&uf=MG&return_to=%2Fdestino`
     await page.goto(entry)
     const businessCalls = () => evidence.requests.filter(row => /\/(mapa|mapa\/resultados)\/$/.test(row.path))
-    await openOtherQueries(page)
-    const input = page.getByRole('combobox', { name: 'CNAEs espec\u00edficos', exact: true })
+    const input = page.getByRole('combobox', { name: 'Tipo de estabelecimento', exact: true })
     await input.click()
     await expect(page.getByRole('option', { name: /0010100/ })).toBeVisible()
     await input.press('ArrowDown')

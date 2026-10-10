@@ -15,7 +15,7 @@ vi.mock('../components/cnae-multiselect', async () => {
   const { cnpjApi: api } = await import('../api/receita-federal/cnpj/client')
   return { CnaeMultiselect: ({ items, onChange }: { items: { codigo: string; descricao: string }[]; onChange: (items: { codigo: string; descricao: string }[]) => void }) => {
     const [options, setOptions] = useState<{ codigo: string; descricao: string }[]>([])
-    return <><input role="combobox" aria-label={'CNAEs espec\u00edficos'} onFocus={() => { void api.cnaes({ page: 1, page_size: 10 }).then(result => setOptions(result.results)) }} />{options.map(item => <button key={item.codigo} type="button" role="option" onClick={() => onChange([...items, item])}>{item.descricao}</button>)}</>
+    return <><input role="combobox" aria-label={'Tipo de estabelecimento'} onFocus={() => { void api.cnaes({ page: 1, page_size: 10 }).then(result => setOptions(result.results)) }} />{options.map(item => <button key={item.codigo} type="button" role="option" onClick={() => onChange([...items, item])}>{item.descricao}</button>)}</>
   } }
 })
 
@@ -54,7 +54,7 @@ describe('busca empresarial unificada',()=>{
     await screen.findByText('ATLAS')
     await user.click(screen.getByText('Demais consultas', { exact: true }))
     vi.mocked(cnpjApi.cnaes).mockResolvedValue({ results: [{ codigo: '0010100', descricao: 'Literal Receita' }], next: null, previous: null } as never)
-    await user.click(screen.getByRole('combobox', { name: 'CNAEs espec\u00edficos' }))
+    await user.click(screen.getByRole('combobox', { name: 'Tipo de estabelecimento' }))
     await user.click(await screen.findByRole('option', { name: /Literal Receita/ }))
     expect(mapMock).toHaveBeenCalledTimes(1); expect(establishmentsMock).toHaveBeenCalledTimes(1)
     expect(screen.getByTestId('location')).toHaveTextContent('modo=mapa&inicio_atividade_de=2025-01-01&uf=MG&page=3')
@@ -173,6 +173,6 @@ describe('busca empresarial unificada',()=>{
 async function chooseCode(user: ReturnType<typeof userEvent.setup>, code: string) {
  vi.mocked(cnpjApi.cnaes).mockResolvedValue({ results: [{ codigo: code, descricao: 'Atividade teste' }], next: null, previous: null } as never)
  await user.click(screen.getByText('Demais consultas', { exact: true }));
- await user.click(screen.getByRole('combobox', {name:'CNAEs espec\u00edficos'}));
+ await user.click(screen.getByRole('combobox', {name:'Tipo de estabelecimento'}));
  await user.click(await screen.findByRole('option', {name:/Atividade teste/}));
 }

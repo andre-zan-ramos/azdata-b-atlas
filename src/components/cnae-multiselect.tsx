@@ -5,7 +5,7 @@ import { cnpjApi } from '../api/receita-federal/cnpj/client'
 import type { CodeDescription } from '../api/receita-federal/cnpj/types'
 import { QueryError } from './query-state'
 
-export function CnaeMultiselect({ items, onChange }: { items: CodeDescription[]; onChange: (items: CodeDescription[]) => void }) {
+export function CnaeMultiselect({ items, onChange, label = 'Tipo de estabelecimento' }: { label?: string; items: CodeDescription[]; onChange: (items: CodeDescription[]) => void }) {
   const id = useId()
   const anchor = useRef<HTMLDivElement>(null)
   const [open, setOpen] = useState(false)
@@ -21,7 +21,7 @@ export function CnaeMultiselect({ items, onChange }: { items: CodeDescription[];
   const domain = useQuery({ queryKey: ['cnpj', 'cnae-multiselect', term, page], enabled: open, queryFn: ({ signal }) => cnpjApi.cnaes({ descricao: term, page, page_size: 10 }, signal), retry: false, refetchOnWindowFocus: false, refetchOnReconnect: false })
   const options = [...items, ...(domain.data?.results ?? []).filter(item => !items.some(selected => selected.codigo === item.codigo))]
   return <div className="cnae-multiselect" onKeyDown={event => { if (event.key === 'Enter' && event.target instanceof HTMLInputElement) event.preventDefault() }}>
-    <label htmlFor={id}>CNAEs específicos</label>
+    <label htmlFor={id}>{label}</label>
     <Combobox.Root multiple items={options} value={items} onValueChange={(next, details) => {
       if (details.reason === 'escape-key') { details.cancel(); return }
       if (next.length > 100) { setNotice('Selecione até 100 CNAEs.'); return }

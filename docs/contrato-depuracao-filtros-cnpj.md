@@ -7,9 +7,9 @@ Entrega atual: preparação e consultas completas em Empresas e Sócios no modo 
 
 Empresas e Sócios, no modo Mapa, devem consultar apenas após seleção explícita
 de localidade e de CNAE e/ou período. A interface deve permitir qualquer CNAE
-do domínio publicado. Tipos por nome e datas ficam no corpo dos filtros;
-a seleção múltipla de CNAEs específicos fica em **Demais consultas**,
-sem diálogo ou controles duplicados.
+do domínio publicado. A seleção múltipla por descrição/código CNAE fica no
+campo principal **Tipo de estabelecimento**, junto das datas. **Demais consultas**
+conserva escopo e outros filtros, sem seletor CNAE duplicado.
 
 Interpretações propostas para revisão:
 
@@ -85,27 +85,28 @@ ou ambiguidade de correspondência não autoriza inferência por nome/prefixo.
 
 ## 4. Organização visual
 
-Revisão de 10/10/2026: o filtro principal **Tipo de estabelecimento** escolhe
-um tipo do catálogo publicado pela API (por exemplo, Restaurantes). A escolha
-substitui os CNAEs anteriores pelos códigos exatos do tipo e usa atividade
-principal. Não classifica empresas pelo nome. Em **Demais consultas**, **CNAEs
-específicos** permite busca por descrição, paginação e seleção múltipla com
-chips removíveis, sem diálogo. Editar os códigos passa a uma seleção
-personalizada. O campo de escopo permanece nessa seção, com secundárias
-habilitadas somente quando certificadas pela API. As datas ficam no corpo,
-sem bordas de grupo nem textos auxiliares. Aplicar continua sendo explícito.
-Esta revisão substitui as descrições históricas dos diálogos abaixo.
+Correção vigente de 10/10/2026: **Tipo de estabelecimento** é o seletor
+múltiplo principal do domínio Receita `dominios/cnaes/`, com busca remota,
+paginação e chips de descrição/código literal. Os quatro segmentos eram
+exemplos, não uma lista fechada. Não há segundo seletor CNAE em **Demais
+consultas**; essa seção conserva escopo e demais filtros. Selecionar atividades
+preserva o escopo escolhido. `segmentos/` serve somente para capacidades e
+revisão explícita de URLs antigas, nunca para as opções principais.
+O limite de 100 códigos selecionados não limita o catálogo navegável.
+
+O campo de escopo permanece em **Demais consultas**, com secundárias habilitadas
+somente quando certificadas pela API. As datas ficam no corpo e Aplicar continua
+sendo explícito. Esta correção substitui as descrições históricas dos diálogos.
 
 O painel conserva a localidade e o botão **Aplicar filtros**. A seção recolhível
-**Demais consultas** agrupa CNAEs específicos e os demais filtros empresariais.
+**Demais consultas** agrupa escopo e os demais filtros empresariais.
 Tipo de estabelecimento e datas ficam visíveis fora da seção.
 Mesmo recolhida, exibe resumo das escolhas aplicadas e indicador de rascunho.
 Recolher não limpa valores e não remove dados da submissão.
 
 | Controle | Edição | Seleção visível |
 | --- | --- | --- |
-| Tipo de estabelecimento | Combobox com tipos do catálogo | Nome do tipo escolhido |
-| CNAEs específicos | Combobox múltiplo em Demais consultas | Chips de descrição e código |
+| Tipo de estabelecimento | Combobox múltiplo com busca remota e paginação Receita | Chips de descrição e código |
 | Datas do estabelecimento | Dois pares de seletores de início e fim no corpo dos filtros | Campo temporal e limites, inclusive intervalos abertos |
 | Demais filtros | Campos compactos na seção | Valores escolhidos; sem defaults empresariais |
 

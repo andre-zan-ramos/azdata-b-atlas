@@ -5,7 +5,6 @@ import { cnpjApi } from '../api/receita-federal/cnpj/client'
 import { QueryError } from './query-state'
 import { CnaeMultiselect } from './cnae-multiselect'
 import { CnpjOtherQueries } from './cnpj-other-queries'
-import { SearchableCombobox } from './searchable-combobox'
 import type { CodeDescription } from '../api/receita-federal/cnpj/types'
 
 export const B2B_FILTER_KEYS = ['segmentos', 'catalog_version', 'cnaes', 'atividade_escopo', 'inicio_atividade_de', 'inicio_atividade_ate', 'situacao_evento_de', 'situacao_evento_ate'] as const
@@ -44,21 +43,18 @@ export function CnpjB2BFilters({ search, onDraftChange, dirty = false, blocked =
   const [legacy, setLegacy] = useState(search.get('cnae') ?? '')
   const [segments, setSegments] = useState(search.get('segmentos') ?? '')
   const [reviewError, setReviewError] = useState('')
-  const [type, setType] = useState<string | null>(null)
+  const [resolveSegments, setResolveSegments] = useState(false)
   const [scope, setScope] = useState(search.get('atividade_escopo') ?? 'principal')
   const [items, setItems] = useState<CodeDescription[]>((search.get('cnaes') ?? '').split(',').filter(Boolean).map(codigo => client.getQueryData<CodeDescription>(['cnpj', 'cnae-label', codigo]) ?? ({ codigo, descricao: 'Literal da URL; descrição ainda não consultada' })))
   const capability = useActivityCapability()
-  const catalog = useQuery({ queryKey: ['cnpj', 'segments-review'], queryFn: ({ signal }) => cnpjApi.segments(signal), retry: false, refetchOnWindowFocus: false, refetchOnReconnect: false })
+  const catalog = useQuery({ queryKey: ['cnpj', 'segments-review'], enabled: resolveSegments && Boolean(segments), queryFn: ({ signal }) => cnpjApi.segments(signal), retry: false, refetchOnWindowFocus: false, refetchOnReconnect: false })
   const selected = segments.split(',').filter(Boolean)
   const reviewed = catalog.data?.segments.filter(segment => selected.includes(segment.id)) ?? []
   const validReview = Boolean(catalog.data && search.get('catalog_version') === catalog.data.catalog_version && selected.every(id => catalog.data!.segments.some(segment => segment.id === id)) && !legacy)
   return <div className="cnpj-primary-filters">
-    <SearchableCombobox label="Tipo de estabelecimento" value={type ?? catalog.data?.segments.find(segment => scope === 'principal' && segment.codes.length === items.length && segment.codes.every(code => items.some(item => item.codigo === code)))?.id ?? (items.length ? 'custom' : '')} loading={catalog.isPending} options={[{ value: '', label: 'Todos os tipos' }, ...(items.length ? [{ value: 'custom', label: 'Seleção personalizada' }] : []), ...(catalog.data?.segments ?? []).map(segment => ({ value: segment.id, label: segment.label }))]} onChange={value => {
-      if (value === 'custom') return
-      const segment = catalog.data?.segments.find(item => item.id === value)
-      const codes = segment ? segment.codes.map(codigo => segment.activities.find(item => item.codigo === codigo) ?? { codigo, descricao: segment.label }) : []
+    <CnaeMultiselect label="Tipo de estabelecimento" items={items} onChange={codes => {
       for (const item of codes) client.setQueryData(['cnpj', 'cnae-label', item.codigo], item)
-      setItems(codes); setScope('principal'); setType(value); setSegments(''); setLegacy(''); onDraftChange?.()
+      setItems(codes); onDraftChange?.()
     }} />
     {capability.isError ? <QueryError error={capability.error} retry={() => void capability.refetch()} /> : null}
     {catalog.isError ? <QueryError error={catalog.error} retry={() => void catalog.refetch()} /> : null}
@@ -66,7 +62,8 @@ export function CnpjB2BFilters({ search, onDraftChange, dirty = false, blocked =
     <input type="hidden" name="cnae" value={legacy} />
     {segments ? <><input type="hidden" name="segmentos" value={segments} /><input type="hidden" name="catalog_version" value={search.get('catalog_version') ?? ''} />
       <p role="alert">Revise segmentos: {segments}. Versão: {search.get('catalog_version') ?? 'ausente'}.</p>
-      {catalog.data ? <><ul>{reviewed.flatMap(segment => segment.activities.map(item => <li key={`${segment.id}-${item.codigo}`}>{item.codigo} · {item.descricao}</li>))}</ul>
+      <button type="button" onClick={() => setResolveSegments(true)}>Resolver segmentos da URL</button>
+      {resolveSegments && catalog.data ? <><ul>{reviewed.flatMap(segment => segment.activities.map(item => <li key={`${segment.id}-${item.codigo}`}>{item.codigo} · {item.descricao}</li>))}</ul>
       {!validReview ? <p role="alert">Segmento desconhecido, versão divergente ou conflito. Corrija a seleção.</p> : null}
       <button type="button" disabled={!validReview} onClick={() => { const codes = [...items, ...reviewed.flatMap(segment => segment.activities)]; if (codes.length > 100) { setReviewError('Limite de 100 CNAEs. Remova itens antes de confirmar.'); return } for (const item of codes) client.setQueryData(['cnpj', 'cnae-label', item.codigo], item); setItems(codes); setSegments(''); setReviewError(''); onDraftChange?.() }}>Confirmar revisão dos códigos</button></> : null}
       <button type="button" onClick={() => { setSegments(''); onDraftChange?.() }}>Remover segmentos para corrigir</button>
@@ -88,8 +85,7 @@ export function CnpjB2BFilters({ search, onDraftChange, dirty = false, blocked =
       {validatePeriod(period) ? <p role="alert">{validatePeriod(period)}</p> : null}
     </fieldset>
     <CnpjOtherQueries search={search} dirty={dirty} blocked={blocked}>
-      <CnaeMultiselect items={items} onChange={codes => { for (const item of codes) client.setQueryData(['cnpj', 'cnae-label', item.codigo], item); setItems(codes); setType('custom'); onDraftChange?.() }} />
-      <label>Atividades consideradas<select value={scope} onChange={event => { setScope(event.target.value); setType('custom'); onDraftChange?.() }}><option value="principal">Somente principal</option><option value="principal_ou_secundaria" disabled={capability.data !== true}>Principal ou secundárias</option></select></label>
+      <label>Atividades consideradas<select value={scope} onChange={event => { setScope(event.target.value); onDraftChange?.() }}><option value="principal">Somente principal</option><option value="principal_ou_secundaria" disabled={capability.data !== true}>Principal ou secundárias</option></select></label>
       {children}
     </CnpjOtherQueries>
   </div>

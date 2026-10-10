@@ -12,6 +12,16 @@ import { cnaeCatalog, cnaeCorrespondence, cnaeDetail, cnaeNode, cnaePage, cnaePa
 import { CnaeCatalogPicker } from './cnae-catalog-picker'
 import { CnpjB2BFilters, applyB2BForm } from './cnpj-b2b-filters'
 
+// Match page-test fixtures; actual Base UI interaction is covered in Chromium.
+vi.mock('./cnae-multiselect', async () => {
+  const { useState } = await import('react')
+  const { cnpjApi: api } = await import('../api/receita-federal/cnpj/client')
+  return { CnaeMultiselect: ({ items, onChange, label }: { label: string; items: { codigo: string; descricao: string }[]; onChange: (items: { codigo: string; descricao: string }[]) => void }) => {
+    const [options, setOptions] = useState<{ codigo: string; descricao: string }[]>([])
+    return <><input role="combobox" aria-label={label} onFocus={() => { void api.cnaes({ page: 1, page_size: 10 }).then(result => setOptions(result.results)) }} />{options.map(item => <button key={item.codigo} type="button" role="option" onClick={() => onChange([...items, item])}>{item.descricao}</button>)}</>
+  } }
+})
+
 vi.mock('../api/ibge/cnae/client', () => ({ cnaeApi: { catalog: vi.fn(), nodes: vi.fn(), node: vi.fn(), relationships: vi.fn(), correspondences: vi.fn(), follow: vi.fn() } }))
 vi.mock('../api/receita-federal/cnpj/client', () => ({ cnpjApi: { cnaes: vi.fn().mockResolvedValue({results:[],next:null,previous:null}), segments: vi.fn() } }))
 const api = vi.mocked(cnaeApi)
@@ -180,20 +190,18 @@ describe('consulta assistida CNAE', () => {
     await act(async () => resolve(cnaePage([cnaeNode])))
     expect(screen.queryByRole('button', { name: 'Selecionar 0010100' })).not.toBeInTheDocument()
   })
-  it('Enter e seleção oficial não aplicam formulário B2B; somente códigos/escopo são enviados', async () => {
+  it('seleção do domínio Receita não aplica formulário B2B; somente códigos/escopo são enviados', async () => {
     const user = userEvent.setup(), applied = vi.fn(), client = createQueryClient()
+    vi.mocked(cnpjApi.cnaes).mockResolvedValue({ count: 1, results: [{ codigo: '0010100', descricao: 'Atividade Receita fora dos segmentos' }], next: null, previous: null })
     render(<QueryClientProvider client={client}><form onSubmit={event => {
       event.preventDefault(); const next = new URLSearchParams('cnae=9999999'); applyB2BForm(new FormData(event.currentTarget), next); applied(next)
     }}><CnpjB2BFilters search={new URLSearchParams('cnaes=0099999,0099999')} /><button>Aplicar filtros</button></form></QueryClientProvider>)
-    await user.click(screen.getByRole('button', { name: 'Selecionar CNAEs' }))
-    await user.click(screen.getByRole('button', { name: 'Consultar catálogo oficial CNAE' }))
-    await user.type(await screen.findByLabelText('Código ou descrição oficial'), 'Atividade{Enter}')
-    await screen.findByRole('button', { name: 'Selecionar 0010100' })
-    expect(within(screen.getByRole('region', { name: 'Consulta do catálogo oficial CNAE' })).getByRole('heading', { name: 'Catálogo oficial CNAE/CONCLA' })).toHaveFocus()
-    await user.click(await screen.findByRole('button', { name: 'Selecionar 0010100' }))
+    await user.click(screen.getByRole('combobox', { name: 'Tipo de estabelecimento' }))
+    await user.click(await screen.findByRole('option', { name: /Atividade Receita fora dos segmentos/ }))
     expect(applied).not.toHaveBeenCalled()
+    await user.keyboard('{Escape}')
+    await user.click(screen.getByText('Demais consultas', { exact: true }))
     expect(screen.getByRole('option', { name: 'Principal ou secundárias' })).toBeDisabled()
-    await user.click(screen.getByRole('button', { name: 'Confirmar' }))
     await user.click(screen.getByRole('button', { name: 'Aplicar filtros' }))
     const next = applied.mock.calls[0][0] as URLSearchParams
     expect(Object.fromEntries(next)).toEqual({ cnaes: '0099999,0099999,0010100', atividade_escopo: 'principal' })
