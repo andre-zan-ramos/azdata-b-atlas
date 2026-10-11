@@ -4,6 +4,16 @@ import { createCnpjApi, serializeParams } from './client'
 import { adaptPage, pageFromSearch } from './pagination'
 
 describe('contrato CNPJ', () => {
+  it('consulta descrição paginada sem busca por código e preserva a opção Receita literal', async () => {
+    const data = { count: 11, next: null, previous: 'page=1', results: [{ codigo: '0111301', descricao: 'Cultivo de arroz' }] }
+    const adapter = vi.fn<AxiosAdapter>(async config => ({ data, status: 200, statusText: 'OK', headers: {}, config }))
+    const signal = new AbortController().signal
+    const result = await createCnpjApi(axios.create({ adapter })).cnaes({ descricao: '0111301', page: 2, page_size: 10 }, signal)
+    expect(result).toEqual(data)
+    expect(adapter).toHaveBeenCalledOnce()
+    expect(adapter.mock.calls[0][0]).toMatchObject({ method: 'get', url: 'api/v1/receita-federal/cnpj/dominios/cnaes/', signal })
+    expect(String(adapter.mock.calls[0][0].params)).toBe('descricao=0111301&page=2&page_size=10')
+  })
   it('consulta mapa, lista e participação separadamente sem cascata nem páginas no mapa', async () => {
     const adapter = vi.fn<AxiosAdapter>(async config => ({ data: { points: [], results: [] }, status: 200, statusText: 'OK', headers: {}, config }))
     const api = createCnpjApi(axios.create({ adapter }))

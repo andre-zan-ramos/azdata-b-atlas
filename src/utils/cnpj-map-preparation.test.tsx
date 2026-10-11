@@ -5,6 +5,12 @@ import { Providers } from '../app/providers'
 import { cnpjApi } from '../api/receita-federal/cnpj/client'
 vi.mock('../api/receita-federal/cnpj/client', () => ({ cnpjApi: { municipalities: vi.fn() } }))
 describe('shared map preparation', () => {
+  it.each([100, 101, 200])('validates %s explicit literal codes without expanding the domain', count => {
+    const codes = Array.from({ length: count }, (_, index) => String(index).padStart(7, '0')).join(',')
+    const error = mapEligibility(new URLSearchParams({ uf: 'MG', cnaes: codes, atividade_escopo: 'principal' }))
+    if (count === 100) expect(error).toBeNull()
+    else expect(error).toContain('100 CNAEs')
+  })
   it('retains a map click until the Receita domain arrives', async () => {
     const select = vi.fn()
     const rows = [{ codigo: '0001', uf: 'MG', descricao: 'Literal', codigo_ibge: '3106200' }]

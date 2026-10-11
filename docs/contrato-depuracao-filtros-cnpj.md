@@ -3,6 +3,12 @@
 Data: 07/10/2026. Status: Etapas 1 a 5 implementadas; aceite operacional pendente.
 Entrega atual: preparação e consultas completas em Empresas e Sócios no modo Mapa.
 
+Revisão do seletor principal em 11/10/2026:
+[domínio geral Receita e compatibilidade](revisao-seletor-cnae-geral.md).
+O campo atual usa `CnaeMultiselect`; os registros do diálogo das etapas
+anteriores abaixo permanecem históricos. A pesquisa é por descrição, sem busca
+exata por código implementada pela API.
+
 ## 1. Objetivo e escopo
 
 Empresas e Sócios, no modo Mapa, devem consultar apenas após seleção explícita

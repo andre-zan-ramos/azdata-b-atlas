@@ -1,5 +1,9 @@
 # Filtros cartográficos CNPJ B2B
 
+Contrato atual do seletor principal e inventário de URLs antigas:
+[revisão CNAE geral, 11/10/2026](revisao-seletor-cnae-geral.md).
+O histórico abaixo não descreve a interface atual.
+
 Proposta de revisão em 07/10/2026: [contrato-depuracao-filtros-cnpj.md](contrato-depuracao-filtros-cnpj.md)
 define localidade + CNAE e/ou período como mínimo, aplicação explícita,
 seletor CNAE geral e diálogos em Demais consultas. Etapas 1 a 3 implementadas,

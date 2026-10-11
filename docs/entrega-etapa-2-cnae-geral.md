@@ -1,5 +1,9 @@
 # Etapa 2 — CNAE geral, 07/10/2026
 
+Registro histórico do diálogo da Etapa 2. A interface atual usa
+`CnaeMultiselect` no campo principal; consultar a
+[revisão do seletor geral de 11/10/2026](revisao-seletor-cnae-geral.md).
+
 Empresas e Sócios no modo Mapa compartilham `CnaeReceitaDialog`. A abertura
 lê somente uma página Receita com dez itens. Busca envia `descricao` e reinicia
 a página; anterior/próxima usam `page`, sem download integral ou busca local.

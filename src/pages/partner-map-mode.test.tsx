@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter, useLocation, useNavigate } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { cnpjApi } from '../api/receita-federal/cnpj/client'
+import { ApiError } from '../api/errors'
 import type { PartnerMapItem, PartnerMapResponse, PartnerMapResults } from '../api/receita-federal/cnpj/types'
 import { Providers } from '../app/providers'
 import { PartnersPage } from './partners-page'
@@ -88,6 +89,24 @@ describe('Fase 5 — mapa de participações por estabelecimento', () => {
     renderPage('/receita-federal/cnpj/socios?modo=mapa&uf=MG&cnaes=0010100&atividade_escopo=principal_ou_secundaria')
     await screen.findByText(/Secundarias sem certificacao/)
     expect(cnpjApi.partnerMap).not.toHaveBeenCalled(); expect(cnpjApi.partnerMapResults).not.toHaveBeenCalled()
+  })
+  it.each(['pending', 'error'])('blocks secondary activity while capability is %s', async state => {
+    if (state === 'pending') vi.mocked(cnpjApi.segments).mockImplementation(() => new Promise(() => {}))
+    else vi.mocked(cnpjApi.segments).mockRejectedValue(new ApiError('Certificação indisponível', 503))
+    renderPage('/receita-federal/cnpj/socios?modo=mapa&uf=MG&cnaes=0111301&atividade_escopo=principal_ou_secundaria')
+    await screen.findByText(/Secundarias sem certificacao/)
+    if (state === 'error') await screen.findByText('Certificação indisponível')
+    expect(cnpjApi.partnerMap).not.toHaveBeenCalled()
+    expect(cnpjApi.partnerMapResults).not.toHaveBeenCalled()
+  })
+  it('preserves selection and displays API rejection when secondary certification changes', async () => {
+    vi.mocked(cnpjApi.segments).mockResolvedValue({ catalog_version: 'b2b-v1', classification_version: 'fixture', reviewed_at: '2026-10-11', source: 'fixture', secondary_available: true, segments: [] })
+    const error = new ApiError('Secundárias não certificadas para a release carregada.', 400, undefined, { atividade_escopo: ['Certificação ausente.'] })
+    vi.mocked(cnpjApi.partnerMap).mockRejectedValue(error); vi.mocked(cnpjApi.partnerMapResults).mockRejectedValue(error)
+    renderPage('/receita-federal/cnpj/socios?modo=mapa&uf=MG&cnaes=0111301&atividade_escopo=principal_ou_secundaria')
+    await screen.findAllByText(error.message)
+    expect(document.querySelector('input[name="cnaes"]')).toHaveValue('0111301')
+    expect(cnpjApi.partnerMap).toHaveBeenCalledTimes(1); expect(cnpjApi.partnerMapResults).toHaveBeenCalledTimes(1)
   })
   beforeEach(() => {
     vi.clearAllMocks()
