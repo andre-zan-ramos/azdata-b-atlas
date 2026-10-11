@@ -419,9 +419,14 @@ e build da entrega preservados; alterações adicionais somente documentais.
 Mensagens de cobertura, erro e seleção territorial ficam no rodapé abaixo
 do mapa. Release ausente representa publicação indisponível; seus zeros
 não comprovam ausência de estabelecimentos nem cobertura completa.
-O filtro explícito Somente empresas ativas envia `situacao_cadastral=2`
-apenas ao Aplicar, junto do mesmo município/CNAE da lista e do mapa.
-O campo de código continua disponível e sincronizado com essa opção.
+A seleção Situação cadastral carrega códigos e descrições de
+`dominios/situacoes-cadastrais/` via `cnpjApi.registrationStatuses`, sem
+catálogo duplicado no frontend. A situação ativa (2) é o padrão do
+formulário quando a URL não informa situação; valores explícitos são preservados.
+Somente Aplicar envia a escolha junto do mesmo município/CNAE da lista e do mapa.
+Todas as situações mantém `situacao_cadastral=` na URL para restaurar a
+escolha sem reativar o padrão; o filtro é omitido na chamada de resultados.
+O catálogo exibe carregamento, erro e nova tentativa, sem fallback fixo.
 
 Inspeção estática da API: a consulta filtra estabelecimentos por
 município/atividade antes de verificar coordenadas. `active_release`
@@ -430,3 +435,14 @@ publicação, o endpoint retorna `release=null` e cobertura zero.
 Isso explica a mensagem da captura, mas o estado real do servidor e a
 quantidade de restaurantes em Governador Valadares não foram verificados.
 Nenhum HTTP, banco ou geocodificação operacional foi executado.
+
+
+## Catálogos de filtros empresariais - 11/10/2026
+
+Matriz/filial, Porte e Natureza jurídica usam escolhas pesquisáveis,
+com descrição e código dos endpoints existentes `dominios/matriz-filial/`,
+`dominios/portes/` e `dominios/naturezas-juridicas/`. O consumidor percorre
+as páginas do catálogo, preserva códigos literais e valores da URL e
+oferece Todos para retirar cada filtro. Erros permitem nova tentativa.
+Escolhas são rascunho até Aplicar; recolher Demais consultas preserva
+os valores enviados igualmente à lista e ao mapa.

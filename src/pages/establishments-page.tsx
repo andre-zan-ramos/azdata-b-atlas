@@ -12,7 +12,7 @@ import { listStates } from '../api/ibge/territories'
 import { cnpjApi } from '../api/receita-federal/cnpj/client'
 import { adaptPage, pageFromSearch } from '../api/receita-federal/cnpj/pagination'
 import { isInvalidTextMatchMode, textMatchModeFromSearch } from '../api/receita-federal/cnpj/match-mode'
-import type { B2BFilters, BusinessSearchFilters, EstablishmentFilters, EstablishmentMapFilters, PageSize, TextMatchMode } from '../api/receita-federal/cnpj/types'
+import type { CodeDescription, B2BFilters, BusinessSearchFilters, EstablishmentFilters, EstablishmentMapFilters, PageSize, TextMatchMode } from '../api/receita-federal/cnpj/types'
 import { LocationFacetFilter } from '../components/location-facet-filter'
 import { Pagination } from '../components/pagination'
 import { Empty, QueryError } from '../components/query-state'
@@ -27,7 +27,54 @@ const TerritoryMap = lazy(() => import('../components/establishment-territory-ma
 
 function CadastralStatusFilter({ initialValue }: { initialValue: string }) {
   const [value, setValue] = useState(initialValue)
-  return <><label>Situação cadastral (código; opcional)<input name="situacao_cadastral" value={value} onChange={event => setValue(event.target.value)} /></label><label>Somente empresas ativas<input type="checkbox" checked={value === '2'} onChange={event => setValue(event.target.checked ? '2' : '')} /></label></>
+  const catalog = useQuery({
+    queryKey: ['cnpj', 'registration-statuses'],
+    queryFn: ({ signal }) => cnpjApi.registrationStatuses({ page: 1, page_size: 50 }, signal),
+    staleTime: 86400000, retry: false, refetchOnWindowFocus: false, refetchOnReconnect: false,
+  })
+  const options = catalog.data?.results ?? []
+  return <>
+    <input type="hidden" name="situacao_cadastral" value={value} />
+    <label>Situação cadastral<select value={value} disabled={!catalog.isSuccess} aria-busy={catalog.isFetching} onChange={event => setValue(event.target.value)}>
+      <option value="">Todas as situações</option>
+      {options.map(item => <option key={item.codigo} value={item.codigo}>{item.descricao} ({item.codigo})</option>)}
+      {value && !options.some(item => item.codigo === value) ? <option value={value}>Situação {value}</option> : null}
+    </select></label>
+    {catalog.isPending ? <p role="status">Carregando situações cadastrais…</p> : null}
+    {catalog.isError ? <QueryError error={catalog.error} retry={() => void catalog.refetch()} /> : null}
+  </>
+}
+
+const DOMAIN_FILTERS = {
+  matriz_filial: { label: 'Matriz/filial', load: cnpjApi.headquartersBranches },
+  porte: { label: 'Porte', load: cnpjApi.companySizes },
+  natureza_juridica: { label: 'Natureza jur\u00eddica', load: cnpjApi.legalNatures },
+} as const
+
+function CompanyDomainFilter({ name, initialValue, onChange }: { name: keyof typeof DOMAIN_FILTERS; initialValue: string; onChange: () => void }) {
+  const [value, setValue] = useState(initialValue)
+  const { label, load } = DOMAIN_FILTERS[name]
+  const catalog = useQuery({
+    queryKey: ['cnpj', 'company-domain', name],
+    queryFn: async ({ signal }) => {
+      const items: CodeDescription[] = []
+      let page = 1
+      while (true) {
+        const result = await load({ page, page_size: 50 }, signal)
+        items.push(...result.results)
+        if (!result.next) return items
+        page += 1
+      }
+    },
+    staleTime: 86400000, retry: false, refetchOnWindowFocus: false, refetchOnReconnect: false,
+  })
+  const options = [{ value: '', label: 'Todos' }, ...(catalog.data ?? []).map(item => ({ value: item.codigo, label: `${item.descricao} (${item.codigo})` }))]
+  if (value && !options.some(item => item.value === value)) options.push({ value, label: `C\u00f3digo ${value}` })
+  return <>
+    <input type="hidden" name={name} value={value} />
+    <SearchableCombobox label={label} value={value} options={options} disabled={!catalog.isSuccess} loading={catalog.isFetching} onChange={next => { setValue(next); onChange() }} />
+    {catalog.isError ? <QueryError error={catalog.error} retry={() => void catalog.refetch()} /> : null}
+  </>
 }
 
 function EstablishmentMapMode({ filters, page, onPage }: { filters: Pick<BusinessSearchFilters, typeof FILTER_KEYS[number]> & B2BFilters; page: number; onPage: (page: number) => void }) {
@@ -73,7 +120,7 @@ function EstablishmentMapMode({ filters, page, onPage }: { filters: Pick<Busines
     const next = new URLSearchParams(draft)
     for (const key of FILTER_KEYS.filter(key => key !== 'uf' && key !== 'municipio')) {
       const value = String(data.get(key) ?? '').trim()
-      if (value) next.set(key, value); else next.delete(key)
+      if (value || key === 'situacao_cadastral') next.set(key, value); else next.delete(key)
     }
     applyB2BForm(data, next)
     next.set('page', '1')
@@ -86,7 +133,7 @@ function EstablishmentMapMode({ filters, page, onPage }: { filters: Pick<Busines
   const points = !blocked && !map.isError && !list.isError && matchingFilters && matchingContext ? (map.data?.points ?? []).filter(point => point.release === map.data?.release) : []
   return <MapWorkspace filters={
     <aside className="filter-card partner-map-filters">{eligibilityError && eligibilityError !== 'Selecione uma UF válida e CNAE e/ou período para aplicar filtros.' ? <p className="establishment-map-validation" role="status">{eligibilityError}</p> : null}
-    {validationError ? <p className="establishment-map-validation" role="alert">{validationError}</p> : null}<h1>Mapa de Empresas</h1><SearchableCombobox label="UF" value={draft.get('uf') ?? ''} options={[{ value: '', label: 'Brasil' }, ...(states.data ?? []).slice().sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')).map(state => ({ value: state.sigla ?? '', label: `${state.nome} (${state.sigla})` }))]} loading={states.isPending} onChange={applyTerritory} /><SearchableCombobox label="Município" value={draft.get('municipio') ?? ''} disabled={!draft.get('uf')} loading={municipalities.isFetching} options={[{ value: '', label: 'Todos' }, ...territories.slice().sort((a, b) => a.descricao.localeCompare(b.descricao, 'pt-BR')).map(item => ({ value: item.codigo, label: item.descricao }))]} emptyMessage="Nenhum município disponível para esta UF." onChange={code => applyTerritory(draft.get('uf') ?? '', code)} />{municipalities.isError ? <QueryError error={municipalities.error} retry={() => void municipalities.refetch()} /> : null}{states.isError ? <QueryError error={states.error} retry={() => void states.refetch()} /> : null}<form key={formReset + [...FILTER_KEYS, ...B2B_FILTER_KEYS].map(key => search.get(key)).join('|')} onChange={markDirty} onSubmit={applyFilters}><CnpjB2BFilters search={search} onDraftChange={markDirty} dirty={dirty} blocked={blocked}><CadastralStatusFilter initialValue={filters.situacao_cadastral ?? ''} /><label>Matriz/filial (código)<input name="matriz_filial" defaultValue={filters.matriz_filial ?? ''} /></label><label>Porte (código)<input name="porte" defaultValue={filters.porte ?? ''} /></label><label>Natureza jurídica (código)<input name="natureza_juridica" defaultValue={filters.natureza_juridica ?? ''} /></label></CnpjB2BFilters><button>Aplicar filtros</button><button type="button" onClick={clearFilters}>Limpar filtros</button></form></aside>
+    {validationError ? <p className="establishment-map-validation" role="alert">{validationError}</p> : null}<h1>Mapa de Empresas</h1><SearchableCombobox label="UF" value={draft.get('uf') ?? ''} options={[{ value: '', label: 'Brasil' }, ...(states.data ?? []).slice().sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')).map(state => ({ value: state.sigla ?? '', label: `${state.nome} (${state.sigla})` }))]} loading={states.isPending} onChange={applyTerritory} /><SearchableCombobox label="Município" value={draft.get('municipio') ?? ''} disabled={!draft.get('uf')} loading={municipalities.isFetching} options={[{ value: '', label: 'Todos' }, ...territories.slice().sort((a, b) => a.descricao.localeCompare(b.descricao, 'pt-BR')).map(item => ({ value: item.codigo, label: item.descricao }))]} emptyMessage="Nenhum município disponível para esta UF." onChange={code => applyTerritory(draft.get('uf') ?? '', code)} />{municipalities.isError ? <QueryError error={municipalities.error} retry={() => void municipalities.refetch()} /> : null}{states.isError ? <QueryError error={states.error} retry={() => void states.refetch()} /> : null}<form key={formReset + [...FILTER_KEYS, ...B2B_FILTER_KEYS].map(key => search.get(key)).join('|')} onChange={markDirty} onSubmit={applyFilters}><CnpjB2BFilters search={search} onDraftChange={markDirty} dirty={dirty} blocked={blocked}><CadastralStatusFilter initialValue={search.get('situacao_cadastral') ?? '2'} />{(Object.keys(DOMAIN_FILTERS) as (keyof typeof DOMAIN_FILTERS)[]).map(name => <CompanyDomainFilter key={name} name={name} initialValue={filters[name] ?? ''} onChange={markDirty} />)}</CnpjB2BFilters><button>Aplicar filtros</button><button type="button" onClick={clearFilters}>Limpar filtros</button></form></aside>
     }>
       <section className="cno-map-card" aria-label="Explorar estabelecimentos no mapa"><div className="cno-map-heading"><div><h2>{selectedMunicipality?.descricao ?? (draft.get('uf') ? `Municípios de ${draft.get('uf')}` : 'Explore o Brasil')}</h2></div><MapHelp /><MapResultsDialog title="Estabelecimentos do recorte">{list.isPending && !blocked ? <p role="status">Carregando resultados…</p> : null}{!blocked && list.isError ? <QueryError error={list.error} retry={() => { if (!blocked) void list.refetch() }} /> : null}{view?.results.length === 0 ? <Empty /> : null}{view && view.results.length > 0 ? <><div className="table-wrap" tabIndex={0} role="region" aria-label="Resultados textuais"><table><thead><tr><th>Nome</th><th>CNPJ</th><th>Município/UF</th></tr></thead><tbody>{view.results.map(item => <tr key={item.id}><td><Link to={`/receita-federal/cnpj/estabelecimentos/${item.cnpj}?return_to=${encodeURIComponent(returnTo)}`}>{item.nome_fantasia || item.razao_social}</Link></td><td>{formatCnpj(item.cnpj)}</td><td>{item.municipio?.descricao || 'Município não informado'} / {item.uf || 'UF não informada'}</td></tr>)}</tbody></table></div><Pagination page={view.page} pageSize={view.pageSize} count={view.count} previous={view.hasPrevious} next={view.hasNext} onPage={onPage} /></> : null}</MapResultsDialog>{draft.get('uf') ? <button type="button" onClick={clearFilters}>Voltar ao Brasil</button> : null}</div><Suspense fallback={<p role="status" className="cno-map-state">Carregando mapa…</p>}><TerritoryMap uf={draft.get('uf') ?? ''} names={draft.get('uf') ? municipalityNames : stateNames} selectedMunicipalityIbge={selectedMunicipality?.codigo_ibge ?? null} points={points} returnTo={returnTo} onState={selectState} onMunicipality={selectMunicipality} /></Suspense><footer className="cno-map-status" aria-label="Status do mapa">{!blocked && map.isFetching ? <p role="status" className="cno-map-caption">Carregando cobertura cartográfica…</p> : null}{!blocked && map.isError ? <QueryError error={map.error} retry={() => { if (!blocked) void map.refetch() }} /> : null}{!blocked && map.data?.release === null ? <p role="status">Publicação CNPJ indisponível para o mapa. Não foi possível confirmar a cobertura; isso não indica ausência de estabelecimentos na cidade.</p> : null}{!blocked && map.data?.release != null && matchingFilters && map.data.coverage.points_total === 0 ? <p role="status">Nenhum ponto disponível para este recorte. Os estabelecimentos encontrados por cidade e atividade continuam em Ver estabelecimentos, mesmo sem coordenadas.</p> : null}{!blocked && map.data && !matchingFilters ? <p role="alert">Os filtros publicados pelo mapa diferem do recorte solicitado. Os pontos estão ocultos.</p> : null}{selectionMessage ? <p role="status">{selectionMessage} <button type="button" onClick={dismissSelectionMessage}>Fechar aviso</button></p> : null}{!blocked && map.data?.release != null && matchingFilters ? <p className="cno-map-coverage">{map.data.coverage.points_total} pontos para {map.data.coverage.results_total} estabelecimentos · {map.data.coverage.without_coordinates_total} sem coordenadas. {map.data.coverage.truncated ? ` Exibindo ${map.data.coverage.returned_points} de ${map.data.coverage.points_total} pontos.` : ' Cobertura cartográfica completa para os pontos válidos do recorte.'}</p> : null}</footer></section>
   </MapWorkspace>

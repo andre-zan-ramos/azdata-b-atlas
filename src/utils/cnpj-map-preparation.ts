@@ -33,10 +33,10 @@ export function mapEligibility(search: URLSearchParams, municipalities: Municipa
   if (!UFS.has(search.get('uf') ?? '')) return 'Selecione uma UF válida e CNAE e/ou período para aplicar filtros.'
   const get = (key: string) => search.get(key) ?? ''
   for (const [key, value] of search) {
-    if (['modo', 'return_to', 'q'].includes(key)) continue
+    if (['modo', 'return_to', 'q'].includes(key) || (key === 'situacao_cadastral' && value === '')) continue
     if (!value || value !== value.trim()) return `Parâmetro inválido: ${key}.`
   }
-  const patterns: Record<string, RegExp> = { municipio: /^[0-9]{4}$/, cnae: /^[0-9]{7}$/, cnpj_basico: /^[0-9]{8}$/, situacao_cadastral: /^[0-9]+$/, matriz_filial: /^[12]$/, porte: /^[0-9]{1,2}$/, natureza_juridica: /^[0-9]{4}$/, page: /^[1-9][0-9]*$/ }
+  const patterns: Record<string, RegExp> = { municipio: /^[0-9]{4}$/, cnae: /^[0-9]{7}$/, cnpj_basico: /^[0-9]{8}$/, situacao_cadastral: /^[0-9]*$/, matriz_filial: /^[12]$/, porte: /^[0-9]{1,2}$/, natureza_juridica: /^[0-9]{4}$/, page: /^[1-9][0-9]*$/ }
   for (const [key, pattern] of Object.entries(patterns)) if (search.has(key) && !pattern.test(get(key))) return `Parâmetro inválido: ${key}.`
   if (search.has('q_modo') && !['contendo', 'inicio', 'fim', 'exato'].includes(get('q_modo'))) return 'Correspondência inválida.'
   if (partner && ((search.has('q') && get('q').trim().length < 3) || (search.has('q_modo') && !search.has('q')))) return 'Informe nome com ao menos 3 caracteres para a correspondência.'
